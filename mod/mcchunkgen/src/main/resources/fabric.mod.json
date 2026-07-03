@@ -1,0 +1,22 @@
+{
+    "schemaVersion": 1,
+    "id": "mcchunkgen",
+    "version": "${version}",
+    "name": "McChunkGen",
+    "description": "GPU-Accelerated Chunk Pre-Generator using native CUDA/C++ code. Up to 1000x faster than vanilla noise generation.",
+    "authors": ["OpenHands"],
+    "contact": {},
+    "license": "MIT",
+    "icon": "assets/mcchunkgen/icon.png",
+    "environment": "server",
+    "entrypoints": {
+        "main": ["io.openhands.mcchunkgen.McChunkGen"]
+    },
+    "mixins": ["mcchunkgen.mixins.json"],
+    "depends": {
+        "fabricloader": ">=0.19.3",
+        "fabric-api": "*",
+        "minecraft": ">=1.21.11",
+        "java": ">=21"
+    }
+}

@@ -1,0 +1,10 @@
+{
+    "required": true,
+    "minVersion": "0.8",
+    "package": "io.openhands.mcchunkgen.mixin",
+    "compatibilityLevel": "JAVA_17",
+    "server": ["ChunkGeneratorMixin"],
+    "injectors": {
+        "defaultRequire": 1
+    }
+}

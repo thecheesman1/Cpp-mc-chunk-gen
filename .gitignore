@@ -1,0 +1,16 @@
+# Build artifacts
+*.o
+chunkgen
+*.so
+*.bin
+
+# Mod build
+mod/mcchunkgen/build/
+mod/mcchunkgen/.gradle/
+mod/mcchunkgen/*.jar
+
+# Editor / OS
+*.swp
+*.swo
+*~
+.DS_Store

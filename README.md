@@ -24,10 +24,10 @@
 
 | Mode | Speed | Description |
 |------|-------|-------------|
-| **Offline** (C++ standalone) | **3001 CPS** | Writes `.mca` files directly. No Java. No server. Just raw C++. |
-| **Online** (Fabric mod + JNI) | **50 CPS** | Injects into a live Minecraft 1.21.11 server via Mixin + JNI. Real-time. |
+| **Offline** (C++ standalone) | **3001 CPS** | Writes `.mca` files directly. No Java. No server. Just raw C++ and a dream. |
+| **Online** (Fabric mod + JNI) | **50 CPS** | Injects into a live Minecraft 1.21.11 server via Mixin + JNI. Polite enough to ask permission first. |
 
-Both modes produce the same output: valid Anvil-format `.mca` files that Minecraft loads without complaint.
+Both modes produce the same output: valid Anvil-format `.mca` files that Minecraft loads without complaint. It doesn't even know they weren't born in Java.
 
 ---
 
@@ -42,7 +42,7 @@ All benchmarks on **Raspberry Pi 5** (4x Cortex-A76 @ 3.0GHz OC, 16GB LPDDR4X, P
 | **McChunkGen Online** (Fabric mod) | 3,721 | **75s** | **50** |
 | **McChunkGen Offline** (C++) | 66,049 | **22s** | **3001** |
 
-3,001 chunks per second. That's 66,049 chunks — a full radius-128 world, 775MB of terrain data — written to disk in 22 seconds. Chunky would still be warming up.
+3,001 chunks per second. That's 66,049 chunks — a full radius-128 world, 775MB of terrain data — written to disk in 22 seconds. Chunky would still be deciding which JVM flags to tune.
 
 ### How It Gets 60x
 
@@ -163,7 +163,7 @@ make chunkgen_offline
 # [McChunkGen] Done! 66049 chunks in 22.0s (3001 CPS)
 ```
 
-Then copy the `region/` folder into your Minecraft world. Start the server. Watch it not lag.
+Then copy the `region/` folder into your Minecraft world. Start the server. It won't even know the chunks weren't there all along. No lag spike. No confused console logs. Just terrain that magically exists.
 
 ### CLI Reference
 
@@ -191,7 +191,7 @@ Then copy the `region/` folder into your Minecraft world. Start the server. Watc
 
 ## The Fabric Mod (For Live Servers)
 
-If you want generation to happen while the server runs (maybe you like watching progress bars), we've got a mod for that.
+If you want generation to happen while the server runs (maybe you enjoy watching progress bars, or you just like making things harder for yourself), we've got a mod for that. It's slower than offline mode, but it's way more impressive to show your friends.
 
 ### How It Works
 
@@ -241,7 +241,7 @@ cd mod/mcchunkgen
 
 **Step 3 — Deploy:**
 
-Drop `mcchunkgen-1.0.0.jar` into your server's `mods/` folder alongside Fabric API. The `.so` is bundled inside the JAR — Fabric Loader extracts it automatically.
+Drop `mcchunkgen-1.0.0.jar` into your server's `mods/` folder alongside Fabric API. The `.so` is bundled inside the JAR — Fabric Loader extracts it automatically. No classpath fiddling. No `-Djava.library.path` nonsense. It just works.
 
 ### Commands
 
@@ -271,7 +271,8 @@ Tag_Compound("")
         List("palette")         // 6 entries: air, stone, dirt, grass, bedrock, water
         Long_Array("data")     // packed BitStorage (3 bits × 4096 blocks = 192 longs)
       Compound("biomes")
-        List("palette")         // 1 entry: plains. Simple.
+        List("palette")         // 1 entry: plains. Don't like it? Write your own biome mod.
+        // No data array — single-entry palette means Minecraft already knows everything is plains
 
   Compound("Heightmaps")
     Long_Array("OCEAN_FLOOR")    // 36 × uint64_t
@@ -316,9 +317,9 @@ may cross 64-bit boundaries (Minecraft is chaotic like that)
 | 9 | Coal Ore | `minecraft:coal_ore` | black spots. early game. |
 | 10 | Iron Ore | `minecraft:iron_ore` | beige spots. mid game. |
 | 11 | Gold Ore | `minecraft:gold_ore` | yellow spots. late game. |
-| 12 | Diamond Ore | `minecraft:diamond_ore` | blue spots. end game. |
-| 13 | Oak Log | `minecraft:oak_log` | tree innards. brown. |
-| 14 | Oak Leaves | `minecraft:oak_leaves` | tree outards. green. |
+| 12 | Diamond Ore | `minecraft:diamond_ore` | blue spots. end game. worth exactly nothing in this generator because we don't place ores. |
+| 13 | Oak Log | `minecraft:oak_log` | tree innards. brown. also not placed by the current noise kernel. |
+| 14 | Oak Leaves | `minecraft:oak_leaves` | tree outards. green. sometimes drops sticks in real Minecraft. this generator does not care. |
 
 ---
 
@@ -367,7 +368,7 @@ The offline generator has neither problem: no JNI, no status advancement, no Min
 | 16-core x86 (DDR5) | 16× Zen 4 | ~8× | ~24,000 |
 | RTX 4090 (CUDA) | 16384× CUDA | ~100× | ~300,000+ |
 
-With CUDA, the bottleneck shifts from compute to disk I/O. At ~300K CPS, you'd saturate a Gen4 NVMe in about 3 seconds. That's a good problem to have.
+With CUDA, the bottleneck shifts from compute to disk I/O. At ~300K CPS, you'd saturate a Gen4 NVMe in about 3 seconds. That's what we call a "nice problem to have." Also means you can stop asking "but what if I overclock to 3.4GHz" — the CPU is not the bottleneck anymore.
 
 ---
 
@@ -411,26 +412,12 @@ case 15: return "minecraft:ebony";
 
 ---
 
-## License
-
-MIT. Do whatever you want. Fork it, sell it, put it on your resume. Just don't blame us if your world generates upside-down — check your seed.
-
----
-
-<p align="center">
-  <em>66,049 chunks · 22 seconds · 3,001 CPS</em>
-  <br>
-  <em>Built with <code>pragma once</code> and questionable optimization choices.</em>
-</p>
-
----
-
 ## ⚠️ Current Limitations
 
 This project values honesty over hype. Here's what it *doesn't* do:
 
 ### Biome uniformity
-All chunks generate as **plains**. No forests, no deserts, no oceans, no mountains. Just grass, stone, dirt, and the occasional cave. This is intentional — biome generation adds significant branching complexity and block-type variety that hurts serialization speed. If you want diverse biomes, the fixed palette approach needs extension work (see Roadmap: biome-aware palette).
+All chunks generate as **plains**. No forests, no deserts, no oceans, no mountains. Just grass, stone, dirt, and the occasional cave. If you were hoping for a savannah village next to a coral reef, this is not the tool for you. This is intentional — biome generation adds significant branching complexity and block-type variety that hurts serialization speed. If you want diverse biomes, the fixed palette approach needs extension work (see Roadmap: biome-aware palette).
 
 ### No structures, features, or entities
 The offline generator writes blocks and heightmaps only. No trees, no villages, no dungeons, no mobs. For pre-generating a world border area before players arrive, this is fine — Minecraft's structure placement phase can populate existing chunks when players first load them. But don't expect a fully-lived-in world straight out of the generator.
@@ -443,3 +430,15 @@ The fixed palette contains 15 block types (air through oak leaves), but the nois
 
 ### Online mode is slower
 The Fabric mod achieves ~50 CPS — impressive for a live server injection, but 60x slower than the offline mode. This is inherent to the JNI boundary cost and Minecraft's chunk status advancement system. For bulk pre-generation, always use offline mode.
+
+## 📜 License
+
+**MIT.** Do whatever you want. Fork it, sell it, put it on your resume, print it out and use it as wallpaper. Just don't blame us if your world generates upside-down — that's a seed issue, not a us issue. Probably.
+
+---
+
+<p align="center">
+  <em>66,049 chunks · 22 seconds · 3,001 CPS</em>
+  <br>
+  <em>Built with <code>pragma once</code>, questionable optimization choices,<br>and the burning desire to never wait for Chunky again.</em>
+</p>

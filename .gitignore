@@ -17,4 +17,8 @@ mcserver/
 *.swp
 *.swo
 *~
-.DS_Store
+.DS_Storemod/mcchunkgen/gradle/wrapper/gradle-wrapper.jar
+mod/mcchunkgen/.gradle/
+mod/mcchunkgen/gradlew
+mod/mcchunkgen/gradlew.bat
+mod/mcchunkgen/gradle/

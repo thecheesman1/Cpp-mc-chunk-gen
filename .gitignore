@@ -8,6 +8,10 @@ chunkgen
 mod/mcchunkgen/build/
 mod/mcchunkgen/.gradle/
 mod/mcchunkgen/*.jar
+mod/mcchunkgen/.fabric/
+
+# Minecraft server (includes JDK, mods, world data, etc.)
+mcserver/
 
 # Editor / OS
 *.swp

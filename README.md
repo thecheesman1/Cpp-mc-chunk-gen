@@ -208,12 +208,40 @@ Minecraft Server
                  └─ returns completed chunk
 ```
 
-### Building
+### Building the Mod
+
+You need two builds: the **native JNI library** (`.so`) and the **Fabric mod JAR**.
+
+**Step 1 — Build the native library:**
 
 ```bash
-cd mod/mcchunkgen && ./gradlew build
+cd mod/mcchunkgen/bridge
+
+# Point to your JDK (adjust path if different)
+export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+
+# Build libmcchunkgen.so
+make
+
+# Copy into mod resources so Fabric finds it
+make install
+# Copies to: mod/mcchunkgen/src/main/resources/libmcchunkgen.so
+```
+
+The Makefile auto-detects `nvcc`. If you have an NVIDIA GPU, it compiles with CUDA. Otherwise it falls back to the CPU mock layer with `g++`.
+
+**Step 2 — Build the Fabric mod JAR:**
+
+```bash
+cd mod/mcchunkgen
+./gradlew build
+
 # Output: build/libs/mcchunkgen-1.0.0.jar
 ```
+
+**Step 3 — Deploy:**
+
+Drop `mcchunkgen-1.0.0.jar` into your server's `mods/` folder alongside Fabric API. The `.so` is bundled inside the JAR — Fabric Loader extracts it automatically.
 
 ### Commands
 
@@ -380,3 +408,24 @@ MIT. Do whatever you want. Fork it, sell it, put it on your resume. Just don't b
   <br>
   <em>Built with <code>pragma once</code> and questionable optimization choices.</em>
 </p>
+
+---
+
+## ⚠️ Current Limitations
+
+This project values honesty over hype. Here's what it *doesn't* do:
+
+### Biome uniformity
+All chunks generate as **plains**. No forests, no deserts, no oceans, no mountains. Just grass, stone, dirt, and the occasional cave. This is intentional — biome generation adds significant branching complexity and block-type variety that hurts serialization speed. If you want diverse biomes, the fixed palette approach needs extension work (see Roadmap: biome-aware palette).
+
+### No structures, features, or entities
+The offline generator writes blocks and heightmaps only. No trees, no villages, no dungeons, no mobs. For pre-generating a world border area before players arrive, this is fine — Minecraft's structure placement phase can populate existing chunks when players first load them. But don't expect a fully-lived-in world straight out of the generator.
+
+### Uncompressed storage
+Chunks are written with compression type 3 (uncompressed). This means `.mca` files are ~2x larger than zlib-compressed equivalents (~12KB vs ~5KB per chunk). Minecraft reads them without complaint, but your disk usage will be higher. A zstd post-processing pass is on the roadmap.
+
+### Single-biome block palette
+The fixed palette contains 15 block types (air through oak leaves), but the noise kernel only uses the first 6 (air through water). Expanding to use the full palette with biome-aware assignment is planned future work.
+
+### Online mode is slower
+The Fabric mod achieves ~50 CPS — impressive for a live server injection, but 60x slower than the offline mode. This is inherent to the JNI boundary cost and Minecraft's chunk status advancement system. For bulk pre-generation, always use offline mode.

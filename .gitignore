@@ -22,3 +22,5 @@ mod/mcchunkgen/.gradle/
 mod/mcchunkgen/gradlew
 mod/mcchunkgen/gradlew.bat
 mod/mcchunkgen/gradle/
+chunkgen_offline
+core.*

@@ -3,7 +3,9 @@
     "minVersion": "0.8",
     "package": "io.openhands.mcchunkgen.mixin",
     "compatibilityLevel": "JAVA_21",
-    "server": [],
+    "server": [
+        "NativeChunkMixin"
+    ],
     "injectors": {
         "defaultRequire": 1
     }

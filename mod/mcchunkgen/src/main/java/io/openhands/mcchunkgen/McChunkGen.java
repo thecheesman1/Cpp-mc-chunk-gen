@@ -3,6 +3,7 @@ package io.openhands.mcchunkgen;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.text.Text;
 
@@ -23,9 +24,13 @@ public class McChunkGen implements ModInitializer {
                     .then(argument("radius", IntegerArgumentType.integer(1, 512))
                         .executes(ctx -> {
                             int radius = IntegerArgumentType.getInteger(ctx, "radius");
-                            worker = new ChunkGenWorker(
-                                ctx.getSource().getWorld().getSeed(),
-                                radius, 0, 0);
+                            long seed = ctx.getSource().getWorld().getSeed();
+                            MinecraftServer server = ctx.getSource().getServer();
+
+                            NativeChunkControl.setActiveSeed(seed);
+                            NativeChunkControl.setEnabled(true);
+
+                            worker = new ChunkGenWorker(server, radius, 0, 0);
                             new Thread(worker).start();
                             ctx.getSource().sendMessage(
                                 Text.literal("§a[McChunkGen] Started pre-generating "
@@ -38,9 +43,13 @@ public class McChunkGen implements ModInitializer {
                                     int radius = IntegerArgumentType.getInteger(ctx, "radius");
                                     int cx = IntegerArgumentType.getInteger(ctx, "centerX");
                                     int cz = IntegerArgumentType.getInteger(ctx, "centerZ");
-                                    worker = new ChunkGenWorker(
-                                        ctx.getSource().getWorld().getSeed(),
-                                        radius, cx, cz);
+                                    long seed = ctx.getSource().getWorld().getSeed();
+                                    MinecraftServer server = ctx.getSource().getServer();
+
+                                    NativeChunkControl.setActiveSeed(seed);
+                                    NativeChunkControl.setEnabled(true);
+
+                                    worker = new ChunkGenWorker(server, radius, cx, cz);
                                     new Thread(worker).start();
                                     ctx.getSource().sendMessage(
                                         Text.literal("§a[McChunkGen] Started pre-generating"));
@@ -54,6 +63,7 @@ public class McChunkGen implements ModInitializer {
                     .executes(ctx -> {
                         if (worker != null) {
                             worker.stop();
+                            NativeChunkControl.setEnabled(false);
                             ctx.getSource().sendMessage(
                                 Text.literal("§e[McChunkGen] Worker stopped"));
                         } else {

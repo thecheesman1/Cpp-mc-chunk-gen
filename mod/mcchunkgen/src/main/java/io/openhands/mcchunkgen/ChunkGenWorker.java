@@ -1,18 +1,18 @@
 package io.openhands.mcchunkgen;
 
+import net.minecraft.registry.RegistryKey;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.ChunkPos;
-import net.minecraft.registry.RegistryKey;
 import net.minecraft.world.World;
-import net.minecraft.world.gen.chunk.ChunkGenerator;
+import net.minecraft.world.chunk.Chunk;
+import net.minecraft.world.chunk.ChunkStatus;
 
-import java.io.*;
-import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class ChunkGenWorker implements Runnable {
-    private final ServerWorld world;
+    private final MinecraftServer server;
     private final long seed;
     private final int radius;
     private final int centerX;
@@ -22,14 +22,12 @@ public class ChunkGenWorker implements Runnable {
     private final AtomicBoolean running = new AtomicBoolean(true);
     private final AtomicInteger generated = new AtomicInteger(0);
 
-    private File outputFile;
-    private DataOutputStream outputStream;
+    private static final int FLUSH_INTERVAL = 64;
+    private static final int LOG_INTERVAL = 4096;
 
-    private static final int FLUSH_INTERVAL = 128;
-
-    public ChunkGenWorker(long seed, int radius, int centerX, int centerZ) {
-        this.world = null;
-        this.seed = seed;
+    public ChunkGenWorker(MinecraftServer server, int radius, int centerX, int centerZ) {
+        this.server = server;
+        this.seed = server.getOverworld().getSeed();
         this.radius = radius;
         this.centerX = centerX;
         this.centerZ = centerZ;
@@ -44,23 +42,37 @@ public class ChunkGenWorker implements Runnable {
 
     @Override
     public void run() {
-        byte[] chunkData = new byte[NativeChunkBridge.CHUNK_VOLUME];
+        ServerWorld world = server.getOverworld();
 
         // Square spiral from center
         int cx = 0, cz = 0, dx = 0, dz = -1;
         int maxI = (2 * radius + 1) * (2 * radius + 1);
+
+        long t0 = System.currentTimeMillis();
 
         for (int i = 0; i < maxI && running.get(); i++) {
             if (-radius <= cx && cx <= radius && -radius <= cz && cz <= radius) {
                 int chunkX = centerX + cx;
                 int chunkZ = centerZ + cz;
 
-                NativeChunkBridge.nativeGenerateChunk(seed, chunkX, chunkZ, chunkData);
+                // Force the chunk to be fully loaded + generated
+                // The mixin intercepts populateNoise to inject native terrain
+                Chunk chunk = world.getChunkManager().getChunk(chunkX, chunkZ, ChunkStatus.FULL, true);
 
                 int done = generated.incrementAndGet();
-                if (done % FLUSH_INTERVAL == 0 && done % 1000 != 0) {
-                    // Periodically yield
-                    Thread.yield();
+
+                // Periodic flush — tell the chunk manager to save
+                if (done % FLUSH_INTERVAL == 0) {
+                    world.getChunkManager().save(false);
+                }
+
+                // Periodic log
+                if (done % LOG_INTERVAL == 0) {
+                    long elapsed = (System.currentTimeMillis() - t0) / 1000;
+                    double cps = elapsed > 0 ? (double) done / elapsed : 0;
+                    System.out.println("[McChunkGen] " + done + "/" + totalChunks
+                        + " chunks (" + String.format("%.1f", progress() * 100)
+                        + "%) at " + String.format("%.0f", cps) + " CPS");
                 }
             }
 
@@ -74,6 +86,12 @@ public class ChunkGenWorker implements Runnable {
             cz += dz;
         }
 
-        System.out.println("[McChunkGen] Finished. Generated " + generated.get() + " chunks.");
+        // Final save
+        world.getChunkManager().save(true);
+        long elapsed = (System.currentTimeMillis() - t0) / 1000;
+        double cps = elapsed > 0 ? (double) generated.get() / elapsed : 0;
+
+        System.out.println("[McChunkGen] Finished. Generated " + generated.get()
+            + " chunks in " + elapsed + "s (" + String.format("%.0f", cps) + " CPS)");
     }
 }

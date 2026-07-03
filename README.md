@@ -13,7 +13,7 @@ McChunkGen is a hybrid C++/Java system for high-speed Minecraft terrain generati
 
 ## 📊 Performance Benchmarks
 
-All benchmarks on **Raspberry Pi 5** (4x Cortex-A76 @ 2.4GHz, 16GB LPDDR4X, PCIe Gen3 NVMe).
+All benchmarks on **Raspberry Pi 5** (4x Cortex-A76 @ 3.0GHz OC, 16GB LPDDR4X, PCIe Gen3 NVMe).
 
 | Mode | Tool | Chunks | Time | CPS | vs Chunky |
 |------|------|-------:|-----:|----:|:---------:|

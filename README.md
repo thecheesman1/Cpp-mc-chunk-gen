@@ -365,6 +365,7 @@ The offline generator has neither problem: no JNI, no status advancement, no Min
 |----------|-------|:-------:|:--------:|
 | Pi 5 (3.0GHz OC) | 4× A76 | 1× | 3,001 |
 | 8-core x86 (DDR4) | 8× Zen 3 | ~4× | ~12,000 |
+| **RTX 4050 Laptop (CUDA)** | **2560× CUDA** | **~5×** | **~15,000** |
 | 16-core x86 (DDR5) | 16× Zen 4 | ~8× | ~24,000 |
 | RTX 4090 (CUDA) | 16384× CUDA | ~100× | ~300,000+ |
 

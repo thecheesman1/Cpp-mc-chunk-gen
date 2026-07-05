@@ -70,11 +70,15 @@ struct Progress {
 
 //=============================================================================
 // Region file manager — thread-safe streaming writer
-// Opens region files on demand and writes chunks immediately.
+// Caches the last region file so consecutive chunks to the same .mca
+// don't pay fopen/fclose/fread/1024×fwrite overhead per chunk.
 //=============================================================================
 class RegionManager {
     std::mutex mtx_;
     std::string world_path_;
+    RegionFile* current_ = nullptr;
+    int cur_rx_ = -9999, cur_rz_ = -9999;
+    char cur_path_[512];
 
 public:
     RegionManager(const std::string& wp) : world_path_(wp) {
@@ -84,25 +88,40 @@ public:
 #else
         mkdir(rd.c_str(), 0755);
 #endif
+        cur_path_[0] = '\0';
     }
+
+    ~RegionManager() { close_current(); }
 
     void write_chunk(int cx, int cz, const uint8_t* data, size_t size) {
         std::lock_guard<std::mutex> lock(mtx_);
         int rx = cx >> 5, rz = cz >> 5;
-        int lcx = cx & 31, lcz = cz & 31;
 
-        char path[512];
-        snprintf(path, sizeof(path), "%s/region/r.%d.%d.mca",
-                 world_path_.c_str(), rx, rz);
-
-        // Open region file (create if not exists, append if exists)
-        RegionFile rf(path);
-        if (!rf.open()) {
-            fprintf(stderr, "\n[ERROR] Cannot open %s\n", path);
-            return;
+        // Same region as last call?  Skip the open/close.
+        if (rx != cur_rx_ || rz != cur_rz_) {
+            close_current();
+            cur_rx_ = rx; cur_rz_ = rz;
+            snprintf(cur_path_, sizeof(cur_path_), "%s/region/r.%d.%d.mca",
+                     world_path_.c_str(), rx, rz);
+            current_ = new RegionFile(cur_path_);
+            if (!current_->open()) {
+                fprintf(stderr, "\n[ERROR] Cannot open %s\n", cur_path_);
+                delete current_; current_ = nullptr;
+                return;
+            }
         }
-        rf.write_chunk(lcx, lcz, data, size);
-        rf.close();
+
+        int lcx = cx & 31, lcz = cz & 31;
+        current_->write_chunk(lcx, lcz, data, size);
+    }
+
+private:
+    void close_current() {
+        if (current_) {
+            current_->close();
+            delete current_;
+            current_ = nullptr;
+        }
     }
 };
 

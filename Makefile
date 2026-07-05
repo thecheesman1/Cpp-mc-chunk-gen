@@ -105,8 +105,8 @@ all: $(TARGET) $(TARGET_OFFLINE)
 # ---- Cross-platform clean (both cmds fail silently on the wrong OS) ----
 clean:
 	-rm -f $(OBJS) $(TARGET) $(TARGET_OFFLINE) terrain.bin shaders/chunk_gen.spv 2>/dev/null
-	-del /q /f generator.o chunkgen.exe chunkgen_offline.exe terrain.bin 2>nul
-	-del /q /f shaders\chunk_gen.spv 2>nul
+	-del /q /f generator.o chunkgen.exe chunkgen_offline.exe terrain.bin
+	-del /q /f shaders\chunk_gen.spv
 
 vulkan-info:
 	@echo "glslc:   $(if $(GLSLC),found,NOT FOUND)"

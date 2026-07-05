@@ -2,10 +2,12 @@
 // chunkgen_offline.cpp — Standalone Minecraft chunk pre-generator
 // Writes valid Anvil (.mca) region files directly from C++.
 // Uses streaming writes (no memory accumulation) to handle any radius.
+// Supports optional Vulkan GPU acceleration via --vulkan flag.
 //=============================================================================
 #include "generator.h"
 #include "nbt.h"
 #include "anvil.h"
+#include "vulkan_backend.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -18,8 +20,12 @@
 #include <memory>
 #include <atomic>
 #include <chrono>
+#ifdef _WIN32
+#include <direct.h>
+#else
 #include <sys/stat.h>
 #include <sys/types.h>
+#endif
 
 //=============================================================================
 // Config
@@ -35,6 +41,7 @@ struct Config {
     int center_z = 0;
     int threads = 4;
     bool quiet = false;
+    bool vulkan = false;
 };
 
 //=============================================================================
@@ -72,7 +79,11 @@ class RegionManager {
 public:
     RegionManager(const std::string& wp) : world_path_(wp) {
         std::string rd = wp + "/region";
+#ifdef _WIN32
+        _mkdir(rd.c_str());
+#else
         mkdir(rd.c_str(), 0755);
+#endif
     }
 
     void write_chunk(int cx, int cz, const uint8_t* data, size_t size) {
@@ -103,16 +114,21 @@ struct ChunkJob {
 };
 
 static void worker_thread(int64_t seed, const std::vector<ChunkJob>& jobs,
-                          RegionManager& rm, Progress& progress, const Config& cfg) {
+                          RegionManager& rm, Progress& progress, const Config& cfg,
+                          VkChunkGenerator* vk_gen = nullptr) {
     std::vector<uint8_t> blocks(CHUNK_VOLUME);
     // Uncompressed NBT: ~130KB per chunk, allocate 256KB for safety
     std::vector<uint8_t> nbt_buf(256 * 1024);
 
     for (const auto& job : jobs) {
-        // Generate terrain
+        // Generate terrain (Vulkan if available, CPU fallback otherwise)
         ChunkBuffer buf;
         buf.data = blocks.data();
-        launch_chunk_generator(buf, job.cx, job.cz, seed);
+        if (vk_gen && vk_gen->is_available()) {
+            vk_gen->generate(buf, job.cx, job.cz, seed);
+        } else {
+            launch_chunk_generator(buf, job.cx, job.cz, seed);
+        }
 
         // Serialize to NBT (uncompressed)
         size_t nbt_size = serialize_chunk(blocks.data(), job.cx, job.cz,
@@ -147,12 +163,14 @@ int main(int argc, char** argv) {
         else if (arg == "--center-x" && i + 1 < argc) cfg.center_x = atoi(argv[++i]);
         else if (arg == "--center-z" && i + 1 < argc) cfg.center_z = atoi(argv[++i]);
         else if (arg == "--threads" && i + 1 < argc) cfg.threads = atoi(argv[++i]);
+        else if (arg == "--vulkan") cfg.vulkan = true;
         else if (arg == "--quiet") cfg.quiet = true;
         else if (arg == "--help") {
             printf("Usage: %s --world <path> --seed <num> --radius <n>\n", argv[0]);
             printf("  --center-x <n>  (default: 0)\n");
             printf("  --center-z <n>  (default: 0)\n");
             printf("  --threads <n>   (default: 4)\n");
+            printf("  --vulkan        Use GPU acceleration via Vulkan (falls back to CPU)\n");
             printf("  --quiet\n");
             return 0;
         }
@@ -196,6 +214,16 @@ int main(int argc, char** argv) {
     std::vector<std::thread> threads;
     RegionManager rm(cfg.world_path);
 
+    // Initialize Vulkan backend if requested
+    VkChunkGenerator vk_gen;
+    if (cfg.vulkan) {
+        if (!vk_gen.init()) {
+            printf("[McChunkGen] Vulkan init failed -- falling back to CPU\n");
+        } else if (!cfg.quiet) {
+            printf("[McChunkGen] Vulkan GPU acceleration active\n");
+        }
+    }
+
     for (int t = 0; t < cfg.threads; t++) {
         size_t start = t * jpt;
         size_t end = std::min(start + jpt, all_jobs.size());
@@ -203,8 +231,8 @@ int main(int argc, char** argv) {
         // Move tjobs into the lambda so the thread owns its job list
         auto tjobs = std::make_shared<std::vector<ChunkJob>>(
             all_jobs.begin() + start, all_jobs.begin() + end);
-        threads.emplace_back([&cfg, seed = cfg.seed, tjobs, &rm, &progress]() {
-            worker_thread(seed, *tjobs, rm, progress, cfg);
+        threads.emplace_back([&cfg, seed = cfg.seed, tjobs, &rm, &progress, &vk_gen]() {
+            worker_thread(seed, *tjobs, rm, progress, cfg, &vk_gen);
         });
     }
 

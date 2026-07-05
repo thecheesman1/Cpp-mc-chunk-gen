@@ -70,12 +70,37 @@ struct Progress {
 };
 
 //=============================================================================
-// Region file manager — thread-safe streaming writer
-// Opens region files on demand and writes chunks immediately.
+// Region file manager — thread-safe streaming writer with file caching
+// Keeps region files open across chunks to avoid fopen/fclose per chunk.
 //=============================================================================
 class RegionManager {
     std::mutex mtx_;
     std::string world_path_;
+
+    // Cache of open region files: key = "rx,rz"
+    struct CachedRegion {
+        RegionFile file;
+        int rx, rz;
+        bool dirty = false;
+    };
+    std::vector<CachedRegion> cache_;
+
+    CachedRegion* find_cached(int rx, int rz) {
+        for (auto& cr : cache_) {
+            if (cr.rx == rx && cr.rz == rz) return &cr;
+        }
+        return nullptr;
+    }
+
+    void flush_all() {
+        for (auto& cr : cache_) {
+            if (cr.dirty) {
+                cr.file.close();
+                cr.dirty = false;
+            }
+        }
+        cache_.clear();
+    }
 
 public:
     RegionManager(const std::string& wp) : world_path_(wp) {
@@ -85,25 +110,43 @@ public:
 #else
         mkdir(rd.c_str(), 0755);
 #endif
+        cache_.reserve(16);
     }
+
+    ~RegionManager() { flush_all(); }
 
     void write_chunk(int cx, int cz, const uint8_t* data, size_t size) {
         std::lock_guard<std::mutex> lock(mtx_);
         int rx = cx >> 5, rz = cz >> 5;
         int lcx = cx & 31, lcz = cz & 31;
 
-        char path[512];
-        snprintf(path, sizeof(path), "%s/region/r.%d.%d.mca",
-                 world_path_.c_str(), rx, rz);
+        CachedRegion* cr = find_cached(rx, rz);
+        if (!cr) {
+            // Evict old entries if cache is too large
+            if (cache_.size() >= 16) flush_all();
 
-        // Open region file (create if not exists, append if exists)
-        RegionFile rf(path);
-        if (!rf.open()) {
-            fprintf(stderr, "\n[ERROR] Cannot open %s\n", path);
-            return;
+            char path[512];
+            snprintf(path, sizeof(path), "%s/region/r.%d.%d.mca",
+                     world_path_.c_str(), rx, rz);
+
+            CachedRegion new_cr;
+            new_cr.rx = rx;
+            new_cr.rz = rz;
+            if (!new_cr.file.open(path)) {
+                fprintf(stderr, "\n[ERROR] Cannot open %s\n", path);
+                return;
+            }
+            cache_.push_back(std::move(new_cr));
+            cr = &cache_.back();
         }
-        rf.write_chunk(lcx, lcz, data, size);
-        rf.close();
+
+        cr->file.write_chunk(lcx, lcz, data, size);
+        cr->dirty = true;
+    }
+
+    void flush() {
+        std::lock_guard<std::mutex> lock(mtx_);
+        flush_all();
     }
 };
 

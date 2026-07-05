@@ -225,25 +225,17 @@ static void write_block_states_fast(NBTBuffer& nb, const uint8_t* section_blocks
     // Use the fixed global palette
     GLOBAL_PALETTE.write_palette(nb);
 
-    // Count actual unique blocks in this section to determine bits per entry
-    bool used[16] = {false};
-    int unique = 0;
+    // Always write data: sections always have >1 block type (at minimum air + stone),
+    // so the BitStorage is always needed. Skip the unique-count pass.
+    int bits = 1;
+    while ((1U << bits) < (unsigned)GLOBAL_PALETTE.name_count) bits++;
+    if (bits < 2) bits = 2;
+
+    BitStorage storage(bits, SECTION_VOLUME);
     for (int i = 0; i < SECTION_VOLUME; i++) {
-        int pi = GLOBAL_PALETTE.lookup[section_blocks[i]];
-        if (!used[pi]) { used[pi] = true; unique++; }
+        storage.set(i, GLOBAL_PALETTE.lookup[section_blocks[i]]);
     }
-
-    if (unique > 1) {
-        int bits = 1;
-        while ((1U << bits) < (unsigned)GLOBAL_PALETTE.name_count) bits++;
-        if (bits < 2) bits = 2;
-
-        BitStorage storage(bits, SECTION_VOLUME);
-        for (int i = 0; i < SECTION_VOLUME; i++) {
-            storage.set(i, GLOBAL_PALETTE.lookup[section_blocks[i]]);
-        }
-        nb.tag_long_array("data", storage.data.data(), (uint32_t)storage.data.size());
-    }
+    nb.tag_long_array("data", storage.data.data(), (uint32_t)storage.data.size());
 
     nb.end_compound();
 }
@@ -359,14 +351,42 @@ class RegionFile {
     std::string path_;
 
 public:
+    RegionFile() : fp_(nullptr), next_sector_(2) {
+        memset(locations_, 0, sizeof(locations_));
+        memset(timestamps_, 0, sizeof(timestamps_));
+    }
+
     RegionFile(const std::string& path) : fp_(nullptr), next_sector_(2), path_(path) {
         memset(locations_, 0, sizeof(locations_));
         memset(timestamps_, 0, sizeof(timestamps_));
     }
 
+    // Move-only: FILE* ownership must be transferred explicitly
+    RegionFile(RegionFile&& other) noexcept
+        : fp_(other.fp_), next_sector_(other.next_sector_), path_(std::move(other.path_)) {
+        memcpy(locations_, other.locations_, sizeof(locations_));
+        memcpy(timestamps_, other.timestamps_, sizeof(timestamps_));
+        other.fp_ = nullptr;
+    }
+    RegionFile& operator=(RegionFile&& other) noexcept {
+        if (this != &other) {
+            if (fp_) close();
+            fp_ = other.fp_;
+            next_sector_ = other.next_sector_;
+            path_ = std::move(other.path_);
+            memcpy(locations_, other.locations_, sizeof(locations_));
+            memcpy(timestamps_, other.timestamps_, sizeof(timestamps_));
+            other.fp_ = nullptr;
+        }
+        return *this;
+    }
+    RegionFile(const RegionFile&) = delete;
+    RegionFile& operator=(const RegionFile&) = delete;
+
     ~RegionFile() { if (fp_) close(); }
 
-    bool open() {
+    bool open(const std::string& path) {
+        path_ = path;
         // Try opening existing file for append
         fp_ = fopen(path_.c_str(), "r+b");
         if (fp_) {
@@ -396,6 +416,8 @@ public:
         next_sector_ = 2;
         return true;
     }
+
+    bool open() { return open(path_); }
 
     // Write a chunk at local coordinates (lcx, lcz) within region (0-31 each)
     bool write_chunk(int lcx, int lcz, const uint8_t* compressed_data, size_t compressed_size) {

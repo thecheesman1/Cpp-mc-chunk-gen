@@ -22,6 +22,7 @@
 #include <chrono>
 #ifdef _WIN32
 #include <direct.h>
+#include <sys/stat.h>
 #else
 #include <sys/stat.h>
 #include <sys/types.h>

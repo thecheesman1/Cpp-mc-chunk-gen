@@ -182,55 +182,32 @@ namespace cuda_mock_detail {
 template <typename Func, typename... Args>
 void launch_kernel(Func&& kernel, dim3 grid, dim3 block,
                    cudaStream_t /*stream*/, Args&&... args) {
-    // Spawn one std::thread per block-group for parallelism,
-    // each block's threads run sequentially within.
+    // Run all blocks sequentially in the calling thread.
+    // Do NOT spawn threads here — parallelism is already provided by
+    // the worker_thread pool.  On Windows/MinGW, CreateThread is
+    // expensive (~10 µs per spawn) and destroys performance at scale.
     unsigned int n_blocks = grid.x * grid.y * grid.z;
     unsigned int n_threads_per_block = block.x * block.y * block.z;
-    unsigned int total_threads = n_blocks * n_threads_per_block;
 
-    // Use a reasonable number of hardware threads
-    unsigned int hw_threads = std::thread::hardware_concurrency();
-    if (hw_threads == 0) hw_threads = 4;
-    unsigned int threads_to_spawn = std::min(n_blocks, hw_threads);
+    for (unsigned int bid = 0; bid < n_blocks; ++bid) {
+        unsigned int bz = bid / (grid.x * grid.y);
+        unsigned int rem = bid % (grid.x * grid.y);
+        unsigned int by = rem / grid.x;
+        unsigned int bx = rem % grid.x;
 
-    auto worker = [&](unsigned int block_start, unsigned int block_end) {
-        for (unsigned int bid = block_start; bid < block_end; ++bid) {
-            unsigned int bz = bid / (grid.x * grid.y);
-            unsigned int rem = bid % (grid.x * grid.y);
-            unsigned int by = rem / grid.x;
-            unsigned int bx = rem % grid.x;
+        for (unsigned int tid = 0; tid < n_threads_per_block; ++tid) {
+            unsigned int tz = tid / (block.x * block.y);
+            unsigned int trem = tid % (block.x * block.y);
+            unsigned int ty = trem / block.x;
+            unsigned int tx = trem % block.x;
 
-            for (unsigned int tid = 0; tid < n_threads_per_block; ++tid) {
-                unsigned int tz = tid / (block.x * block.y);
-                unsigned int trem = tid % (block.x * block.y);
-                unsigned int ty = trem / block.x;
-                unsigned int tx = trem % block.x;
+            threadIdx = {tx, ty, tz};
+            blockIdx  = {bx, by, bz};
+            blockDim  = block;
+            gridDim   = grid;
 
-                // Set thread-local CUDA built-ins
-                threadIdx = {tx, ty, tz};
-                blockIdx  = {bx, by, bz};
-                blockDim  = block;
-                gridDim   = grid;
-
-                // Call the kernel
-                kernel(args...);
-            }
+            kernel(args...);
         }
-    };
-
-    if (threads_to_spawn <= 1 || n_blocks <= 1) {
-        worker(0, n_blocks);
-    } else {
-        std::vector<std::thread> pool;
-        unsigned int blocks_per_thread = n_blocks / threads_to_spawn;
-        unsigned int remainder = n_blocks % threads_to_spawn;
-        unsigned int start = 0;
-        for (unsigned int i = 0; i < threads_to_spawn; ++i) {
-            unsigned int count = blocks_per_thread + (i < remainder ? 1 : 0);
-            pool.emplace_back(worker, start, start + count);
-            start += count;
-        }
-        for (auto& t : pool) t.join();
     }
 }
 

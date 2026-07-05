@@ -32,6 +32,16 @@ __device__ __host__ static const unsigned char perm[256] = {
 };
 
 //=============================================================================
+// Fast floor — avoids CRT function call (MinGW calls DLL, Linux inlines to
+// roundsd).  Safe for our range: coords bounded by chunk extents ±CHUNK_SIZE.
+//=============================================================================
+static inline int fast_ifloor(float x) {
+    int i = (int)x;
+    return i - (x < (float)i);
+}
+static inline float fast_floorf(float x) { return (float)fast_ifloor(x); }
+
+//=============================================================================
 // 3D Perlin noise — single-threaded building block
 //=============================================================================
 __device__ __host__ static inline float grad3d(int hash, float x, float y, float z) {
@@ -51,13 +61,13 @@ __device__ __host__ static inline float lerp(float a, float b, float t) {
 
 __device__ __host__ static inline float perlin3d(float x, float y, float z,
                                                   const unsigned char* perm_table) {
-    int X = (int)std::floor(x) & 255;
-    int Y = (int)std::floor(y) & 255;
-    int Z = (int)std::floor(z) & 255;
+    int X = fast_ifloor(x) & 255;
+    int Y = fast_ifloor(y) & 255;
+    int Z = fast_ifloor(z) & 255;
 
-    x -= std::floor(x);
-    y -= std::floor(y);
-    z -= std::floor(z);
+    x -= fast_floorf(x);
+    y -= fast_floorf(y);
+    z -= fast_floorf(z);
 
     float u = fade(x);
     float v = fade(y);

@@ -137,13 +137,32 @@ inline cudaError_t cudaGetLastError() {
 
 // ---------------------------------------------------------------------------
 // Thread-local CUDA built-in variables (set by LAUNCH_KERNEL)
-// Reuse dim3 for all so assignment from dim3 literals works.
-// inline (C++17) prevents multiple-definition linker errors.
+//
+// Uses a getter-function pattern to avoid TLS init symbol conflicts on
+// MinGW (GCC on Windows). Function-local statics have well-defined TLS
+// semantics across translation units even when MinGW's inline variable
+// support chokes on thread_local.
 // ---------------------------------------------------------------------------
-inline thread_local dim3 threadIdx{0, 0, 0};
-inline thread_local dim3 blockIdx{0, 0, 0};
-inline thread_local dim3 blockDim{1, 1, 1};
-inline thread_local dim3 gridDim{1, 1, 1};
+namespace cuda_mock_tls {
+
+struct CudaTls {
+    dim3 threadIdx{0, 0, 0};
+    dim3 blockIdx{0, 0, 0};
+    dim3 blockDim{1, 1, 1};
+    dim3 gridDim{1, 1, 1};
+};
+
+inline CudaTls& get() {
+    static thread_local CudaTls tls;
+    return tls;
+}
+
+} // namespace cuda_mock_tls
+
+#define threadIdx (cuda_mock_tls::get().threadIdx)
+#define blockIdx  (cuda_mock_tls::get().blockIdx)
+#define blockDim  (cuda_mock_tls::get().blockDim)
+#define gridDim   (cuda_mock_tls::get().gridDim)
 
 // ---------------------------------------------------------------------------
 // Strip CUDA function qualifiers for mock mode

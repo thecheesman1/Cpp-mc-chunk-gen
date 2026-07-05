@@ -177,8 +177,12 @@ int main(int argc, char** argv) {
     }
 
     std::string region_dir = cfg.world_path + "/region";
+#ifdef _WIN32
+    if (_access(region_dir.c_str(), 0) != 0) {
+#else
     struct stat st;
     if (stat(region_dir.c_str(), &st) != 0) {
+#endif
         fprintf(stderr, "[ERROR] %s/region/ does not exist\n", cfg.world_path.c_str());
         fprintf(stderr, "  mkdir -p %s\n", region_dir.c_str());
         return 1;

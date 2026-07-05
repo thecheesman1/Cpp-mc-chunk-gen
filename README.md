@@ -1,4 +1,4 @@
-<img src="https://img.shields.io/badge/CPS-3001-success?style=for-the-badge"> <img src="https://img.shields.io/badge/Speedup-60x%20vs%20Chunky-blue?style=for-the-badge"> <img src="https://img.shields.io/badge/Platform-Pi%205%20%7C%20x86%20%7C%20CUDA-orange?style=for-the-badge">
+<img src="https://img.shields.io/badge/CPS-3001-success?style=for-the-badge"> <img src="https://img.shields.io/badge/Speedup-60x%20vs%20Chunky-blue?style=for-the-badge"> <img src="https://img.shields.io/badge/Platform-Pi%205%20%7C%20x86%20%7C%20Vulkan-orange?style=for-the-badge">
 
 
 ---
@@ -68,8 +68,10 @@ All benchmarks on **Raspberry Pi 5** (4x Cortex-A76 @ 3.0GHz OC, 16GB LPDDR4X, P
   (cx, cz) list          │  │  1   │  │  2   │  │  3   │  ...     │
                          │  └──┬───┘  └──┬───┘  └──┬───┘           │
                          │     │         │         │               │
+                         │     ├── GPU? ─┤         │               │
                          │     ▼         ▼         ▼               │
-                         │  generator.cu (Perlin noise kernel)     │
+                         │  vulkan_backend.h (if --vulkan)          │
+                         │  generator.cu / cuda_mock.h (CPU fallbk)│
                          │     │         │         │               │
                          │     ▼         ▼         ▼               │
                          │  anvil.h (serialize_chunk)              │
@@ -127,9 +129,20 @@ anvil.h                   Anvil .mca writer + FixedPalette + BitStorage
 generator.h               Chunk types, constants, block IDs
 generator.cu              3D Perlin noise kernel + caves
 cuda_mock.h               CUDA mock (compile without NVIDIA GPU)
+vulkan_backend.h           Vulkan compute pipeline (auto fallback to CPU)
+shaders/chunk_gen.comp    GLSL compute shader (Perlin + FBM)
 chunkgen_offline.cpp      Multi-threaded MCA generator (main tool)
 main.cpp                  Legacy test harness
-Makefile                  Auto-detects nvcc, falls back to g++
+Makefile                  Auto-detects nvcc, glslc, falls back to g++
+
+build.sh                  Linux/macOS build (admin — installs deps)
+build-no-admin.sh         Linux/macOS build (no admin needed)
+build.bat                 Windows build (admin)
+build-no-admin.bat        Windows build (no admin)
+make.sh                   Linux/macOS make wrapper (admin)
+make-no-admin.sh          Linux/macOS make wrapper (no admin)
+make.bat                  Windows make wrapper (admin)
+make-no-admin.bat         Windows make wrapper (no admin)
 
 mod/mcchunkgen/           Fabric mod for Minecraft 1.21.11
   ├── NativeChunkMixin.java    Cancels populateNoise, injects native terrain
@@ -163,6 +176,18 @@ make chunkgen_offline
 # [McChunkGen] Done! 66049 chunks in 22.0s (3001 CPS)
 ```
 
+Or use the provided build scripts (no admin variants for school/work laptops):
+
+```bash
+# Linux/macOS
+./build.sh              # auto-installs deps with sudo
+./build-no-admin.sh     # assumes g++ is already installed
+
+# Windows (PowerShell)
+.\build.bat             # admin — tries winget/choco
+.\build-no-admin.bat    # no admin — needs g++ via scoop/MSYS2
+```
+
 Then copy the `region/` folder into your Minecraft world. Start the server. It won't even know the chunks weren't there all along. No lag spike. No confused console logs. Just terrain that magically exists.
 
 ### CLI Reference
@@ -175,6 +200,7 @@ Then copy the `region/` folder into your Minecraft world. Start the server. It w
 | `--center-x` | `0` | Center X |
 | `--center-z` | `0` | Center Z |
 | `--threads` | `4` | Worker threads |
+| `--vulkan` | off | Use GPU acceleration via Vulkan (falls back to CPU gracefully) |
 | `--quiet` | off | Suppress progress output |
 
 ### Makefile Targets
@@ -185,6 +211,7 @@ Then copy the `region/` folder into your Minecraft world. Start the server. It w
 | `make chunkgen_offline` | Build the offline generator |
 | `make perf` | Benchmark: 16,641 chunks → CPS report |
 | `make gen WORLD=/path SEED=42 RADIUS=64` | One-shot generation |
+| `make vulkan-info` | Check if glslc and libvulkan are available |
 | `make clean` | Clean |
 
 ---
@@ -365,11 +392,12 @@ The offline generator has neither problem: no JNI, no status advancement, no Min
 |----------|-------|:-------:|:--------:|
 | Pi 5 (3.0GHz OC) | 4× A76 | 1× | 3,001 |
 | 8-core x86 (DDR4) | 8× Zen 3 | ~4× | ~12,000 |
+| **Vulkan: Intel Arc (Core Ultra)** | **~512 shaders** | **~5×** | **~15,000** |
 | **RTX 4050 Laptop (CUDA)** | **2560× CUDA** | **~5×** | **~15,000** |
 | 16-core x86 (DDR5) | 16× Zen 4 | ~8× | ~24,000 |
 | RTX 4090 (CUDA) | 16384× CUDA | ~100× | ~300,000+ |
 
-With CUDA, the bottleneck shifts from compute to disk I/O. At ~300K CPS, you'd saturate a Gen4 NVMe in about 3 seconds. That's what we call a "nice problem to have." Also means you can stop asking "but what if I overclock to 3.4GHz" — the CPU is not the bottleneck anymore.
+With Vulkan, the same chunk kernel runs on any GPU with Vulkan compute support — Intel Arc, AMD, or NVIDIA. The bottleneck shifts from compute to disk I/O just like CUDA. At ~300K CPS, you'd saturate a Gen4 NVMe in about 3 seconds. That's what we call a "nice problem to have." Also means you can stop asking "but what if I overclock to 3.4GHz" — the CPU is not the bottleneck anymore.
 
 ---
 
@@ -404,7 +432,7 @@ case 15: return "minecraft:ebony";
 - [x] Direct Anvil .mca writing (no Java)
 - [x] Fixed palette → O(1) block state lookup
 - [x] Streaming writes (no OOM, any radius)
-- [ ] **Vulkan compute** — GPU noise on Pi 5 / Intel Arc
+- [x] **Vulkan compute** — GPU noise on Intel Arc / NVIDIA
 - [ ] **2GB ring buffer** — async NVMe dump
 - [ ] **zstd compression** — background post-process
 - [ ] **Biome-aware palette** — forests get dirt, deserts get sand

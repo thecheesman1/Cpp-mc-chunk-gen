@@ -166,6 +166,51 @@ __global__ void generate_chunk_kernel(ChunkBuffer buffer, int64_t chunk_x, int64
 //=============================================================================
 void launch_chunk_generator(ChunkBuffer d_buffer, int64_t chunk_x, int64_t chunk_z,
                              int64_t seed, cudaStream_t stream) {
+#ifndef __CUDACC__
+    // CPU mock mode: call the kernel directly as a simple double loop,
+    // bypassing the expensive mock CUDA thread-launch machinery.
+    // The caller already provides multi-threading (chunkgen_offline.cpp
+    // spawns N worker threads), so spawning another pool per chunk
+    // just creates thread-creation overhead — especially slow on Windows.
+    for (unsigned int bx = 0; bx < CHUNK_SIZE_X; ++bx) {
+        for (unsigned int bz = 0; bz < CHUNK_SIZE_Z; ++bz) {
+            // World-space coordinates for this column
+            float wx = (float)(chunk_x * CHUNK_SIZE_X + bx);
+            float wz = (float)(chunk_z * CHUNK_SIZE_Z + bz);
+
+            float offset = (float)(seed % 65536) * 137.631f;
+
+            float height_noise = fbm3d(wx * 0.02f + offset, wz * 0.02f + offset, 0.5f, 4, perm);
+            int height = (int)((height_noise * 0.5f + 0.5f) * 44.0f + 4.0f);
+            if (height > CHUNK_SIZE_Y) height = CHUNK_SIZE_Y;
+
+            for (unsigned int y = 0; y < CHUNK_SIZE_Y; ++y) {
+                unsigned int idx = (bz * CHUNK_SIZE_X + bx) * CHUNK_SIZE_Y + y;
+                unsigned char block = BLOCK_AIR;
+
+                if (y <= 1) {
+                    block = BLOCK_BEDROCK;
+                } else if (y < height - 3) {
+                    block = BLOCK_STONE;
+                    float c = fbm3d(wx * 0.05f + offset, (float)y * 0.08f, wz * 0.05f + offset, 3, perm);
+                    if (c > 0.35f && y > 6) {
+                        block = BLOCK_AIR;
+                    }
+                } else if (y < height - 1) {
+                    block = BLOCK_DIRT;
+                } else if (y < height) {
+                    block = BLOCK_GRASS;
+                }
+
+                if (block == BLOCK_AIR && y < 32 && y > height) {
+                    block = (y < 30) ? BLOCK_STONE : BLOCK_WATER;
+                }
+
+                d_buffer.data[idx] = block;
+            }
+        }
+    }
+#else
     // 2D grid of 8×8 blocks, each block processes 2×2 columns (4×32 threads = 128)
     dim3 block_dim(2, 32, 1);
     dim3 grid_dim(
@@ -176,4 +221,5 @@ void launch_chunk_generator(ChunkBuffer d_buffer, int64_t chunk_x, int64_t chunk
 
     LAUNCH_KERNEL(generate_chunk_kernel, grid_dim, block_dim, stream,
                   d_buffer, chunk_x, chunk_z, seed);
+#endif
 }

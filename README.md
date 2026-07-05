@@ -432,7 +432,7 @@ case 15: return "minecraft:ebony";
 - [x] Direct Anvil .mca writing (no Java)
 - [x] Fixed palette → O(1) block state lookup
 - [x] Streaming writes (no OOM, any radius)
-- [x] **Vulkan compute** — GPU noise on Intel Arc / NVIDIA
+- [x] **Vulkan compute** — GPU noise on Pi 5 / Intel Arc
 - [ ] **2GB ring buffer** — async NVMe dump
 - [ ] **zstd compression** — background post-process
 - [ ] **Biome-aware palette** — forests get dirt, deserts get sand

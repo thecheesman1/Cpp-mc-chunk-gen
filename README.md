@@ -55,7 +55,7 @@ All Windows benchmarks on **Intel Core Ultra 5 225U** (2P + 8E cores, 16GB RAM, 
 | **Offline** (plugged in, Vulkan) | — | 66,049 | **TBD** | **TBD** | Requires Vulkan SDK |
 | **Offline** (plugged in, Vulkan + 4 threads) | 4 | 66,049 | **TBD** | **TBD** | Async GPU + CPU pipeline |
 
-> Battery mode hits ~2585 CPS — the E-cores throttle and P-cores get voltage-limited. Plugged in should match or exceed the Pi 5's 3001 CPS. Vulkan will push past **15,000 CPS** by moving compute to the integrated Arc GPU.
+> Battery mode hits ~2585 CPS — the E-cores throttle and P-cores get voltage-limited. Plugged in should match or exceed the Pi 5's 3001 CPS. Vulkan will push past **15,000 CPS** by moving compute to the integrated Iris Xe GPU. (GPU specs: 4-Cores, 64 Execution Units (or EU's), 2.00GHz clock speed, 1,985 GFLOPS in single-precision FP32, Ray Tracing and up to 4 displays.)
 
 ### How It Gets 60x
 

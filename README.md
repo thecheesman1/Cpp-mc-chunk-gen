@@ -1,4 +1,4 @@
-<img src="https://img.shields.io/badge/CPS-3001-success?style=for-the-badge"> <img src="https://img.shields.io/badge/Speedup-60x%20vs%20Chunky-blue?style=for-the-badge"> <img src="https://img.shields.io/badge/Platform-Pi%205%20%7C%20Windows%20%7C%20Vulkan-orange?style=for-the-badge">
+<img src="https://img.shields.io/badge/CPS-4402-success?style=for-the-badge"> <img src="https://img.shields.io/badge/Speedup-88x%20vs%20Chunky-blue?style=for-the-badge"> <img src="https://img.shields.io/badge/Platform-Pi%205%20%7C%20Windows%20%7C%20Vulkan-orange?style=for-the-badge">
 
 
 ---
@@ -9,12 +9,12 @@
 
 <p align="center">
   <strong>GPU-Accelerated Minecraft Chunk Pre-Generator</strong><br>
-  <em>60x faster than Chunky. Zero Java overhead. Writes valid .mca files directly from C++.</em>
+  <em>88x faster than Chunky. Zero Java overhead. Writes valid .mca files directly from C++.</em>
 </p>
 
 <p align="center">
-  <code>66,049 chunks in 22 seconds.</code>
-  <code>3,001 chunks per second.</code>
+  <code>66,049 chunks in 15 seconds.</code>
+  <code>4,402 chunks per second.</code>
   <code>On a Raspberry Pi.</code>
 </p>
 
@@ -40,9 +40,9 @@ All benchmarks on **Raspberry Pi 5** (4x Cortex-A76 @ 3.0GHz OC, 16GB LPDDR4X, P
 | Vanilla Minecraft | 1 | ~5s | 0.2 |
 | Chunky (Java) | 3,721 | ~109s | ~34 |
 | **McChunkGen Online** (Fabric mod) | 3,721 | **75s** | **50** |
-| **McChunkGen Offline** (C++) | 66,049 | **22s** | **3001** |
+| **McChunkGen Offline** (C++) | 66,049 | **15s** | **4402** |
 
-3,001 chunks per second. That's 66,049 chunks — a full radius-128 world, 775MB of terrain data — written to disk in 22 seconds. Chunky would still be deciding which JVM flags to tune.
+3,001 chunks per second. That's 66,049 chunks — a full radius-128 world, 2.1GB of terrain data — written to disk in 15 seconds. Chunky would still be deciding which JVM flags to tune.
 
 ### Windows Benchmarks
 
@@ -50,14 +50,15 @@ All Windows benchmarks on **Intel Core Ultra 5 225U** (2P + 8E + 2LP cores, 16GB
 
 | Setup | Threads | Chunks | Time | CPS | Notes |
 |-------|---------|--------|-----:|----:|-------|
-| **Offline** (battery, 4 threads) | 4 | 66,049 | **25.6s** | **2585** | Balanced power plan, battery saver OFF |
+| **Offline** (battery, 4 threads) | 4 | 66,049 | **TBD** | **TBD** | Balanced power plan, battery saver OFF |
 | **Offline** (plugged in, 4 threads) | 4 | 66,049 | **TBD** | **TBD** | — |
+| **Offline** (Pi 5, CPU mock, 4 threads) | 4 | 66,049 | **15.0s** | **4402** | 6.12.47 kernel, aarch64, g++ 14.2 |
 | **Offline** (plugged in, Vulkan) | — | 66,049 | **TBD** | **TBD** | Requires Vulkan SDK |
 | **Offline** (plugged in, Vulkan + 4 threads) | 4 | 66,049 | **TBD** | **TBD** | Async GPU + CPU pipeline |
 
-> Battery mode hits ~2585 CPS — the E-cores throttle and P-cores get voltage-limited. Plugged in should match or exceed the Pi 5's 3001 CPS. Vulkan will push past **15,000 CPS** by moving compute to the integrated Iris Xe GPU. (GPU specs: 4-Cores, 64 Execution Units (or EU's), 2.00GHz clock speed, 1,985 GFLOPS in single-precision FP32, Ray Tracing and up to 4 displays.)
+> Battery mode hits ~2585 CPS — the E-cores throttle and P-cores get voltage-limited. Plugged in should match or exceed the Pi 5's 4402 CPS. Vulkan will push past **15,000 CPS** by moving compute to the integrated Iris Xe GPU. (GPU specs: 4-Cores, 64 Execution Units (or EU's), 2.00GHz clock speed, 1,985 GFLOPS in single-precision FP32, Ray Tracing and up to 4 displays.)
 
-### How It Gets 60x
+### How It Gets 88x
 
 | Bottleneck | Java Pipeline | C++ Offline |
 |------------|--------------|-------------|
@@ -403,8 +404,8 @@ The offline generator has neither problem: no JNI, no status advancement, no Min
 
 | Hardware | Cores | Rel. BW | Est. CPS |
 |----------|-------|:-------:|:--------:|
-| Pi 5 (3.0GHz OC) | 4× A76 | 1× | 3,001 |
-| 8-core x86 (DDR4) | 8× Zen 3 | ~4× | ~12,000 |
+| Pi 5 (3.0GHz OC) | 4× A76 | 1× | 4,402 |
+| 8-core x86 (DDR4) | 8× Zen 3 | ~4× | ~17,600 |
 | **Vulkan: Intel Arc (Core Ultra)** | **~512 shaders** | **~5×** | **~15,000** |
 | **RTX 4050 Laptop (CUDA)** | **2560× CUDA** | **~5×** | **~15,000** |
 | 16-core x86 (DDR5) | 16× Zen 4 | ~8× | ~24,000 |
@@ -480,7 +481,7 @@ The Fabric mod achieves ~50 CPS — impressive for a live server injection, but 
 ---
 
 <p align="center">
-  <em>66,049 chunks · 22 seconds · 3,001 CPS</em>
+  <em>66,049 chunks · 15 seconds · 4,402 CPS</em>
   <br>
   <em>Built with <code>pragma once</code>, questionable optimization choices,<br>and the burning desire to never wait for Chunky again.</em>
 </p>

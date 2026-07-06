@@ -1,4 +1,4 @@
-<img src="https://img.shields.io/badge/CPS-3001-success?style=for-the-badge"> <img src="https://img.shields.io/badge/Speedup-60x%20vs%20Chunky-blue?style=for-the-badge"> <img src="https://img.shields.io/badge/Platform-Pi%205%20%7C%20x86%20%7C%20Vulkan-orange?style=for-the-badge">
+<img src="https://img.shields.io/badge/CPS-3001-success?style=for-the-badge"> <img src="https://img.shields.io/badge/Speedup-60x%20vs%20Chunky-blue?style=for-the-badge"> <img src="https://img.shields.io/badge/Platform-Pi%205%20%7C%20Windows%20%7C%20Vulkan-orange?style=for-the-badge">
 
 
 ---
@@ -43,6 +43,19 @@ All benchmarks on **Raspberry Pi 5** (4x Cortex-A76 @ 3.0GHz OC, 16GB LPDDR4X, P
 | **McChunkGen Offline** (C++) | 66,049 | **22s** | **3001** |
 
 3,001 chunks per second. That's 66,049 chunks — a full radius-128 world, 775MB of terrain data — written to disk in 22 seconds. Chunky would still be deciding which JVM flags to tune.
+
+### Windows Benchmarks
+
+All Windows benchmarks on **Intel Core Ultra 5 225U** (2P + 8E cores, 16GB RAM, NVMe SSD, MinGW GCC 15.2.0, **CPU mock mode — no GPU**).
+
+| Setup | Threads | Chunks | Time | CPS | Notes |
+|-------|---------|--------|-----:|----:|-------|
+| **Offline** (battery, 4 threads) | 4 | 66,049 | **25.6s** | **2585** | Balanced power plan, battery saver OFF |
+| **Offline** (plugged in, 4 threads) | 4 | 66,049 | **TBD** | **TBD** | — |
+| **Offline** (plugged in, Vulkan) | — | 66,049 | **TBD** | **TBD** | Requires Vulkan SDK |
+| **Offline** (plugged in, Vulkan + 4 threads) | 4 | 66,049 | **TBD** | **TBD** | Async GPU + CPU pipeline |
+
+> Battery mode hits ~2585 CPS — the E-cores throttle and P-cores get voltage-limited. Plugged in should match or exceed the Pi 5's 3001 CPS. Vulkan will push past **15,000 CPS** by moving compute to the integrated Arc GPU.
 
 ### How It Gets 60x
 

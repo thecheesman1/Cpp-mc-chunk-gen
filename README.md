@@ -46,7 +46,7 @@ All benchmarks on **Raspberry Pi 5** (4x Cortex-A76 @ 3.0GHz OC, 16GB LPDDR4X, P
 
 ### Windows Benchmarks
 
-All Windows benchmarks on **Intel Core Ultra 5 225U** (2P + 8E cores, 16GB RAM, NVMe SSD, MinGW GCC 15.2.0, **CPU mock mode — no GPU**).
+All Windows benchmarks on **Intel Core Ultra 5 225U** (2P + 8E + 2LP cores, 16GB RAM, NVMe SSD, MinGW GCC 15.2.0, **CPU mock mode — no GPU**).
 
 | Setup | Threads | Chunks | Time | CPS | Notes |
 |-------|---------|--------|-----:|----:|-------|

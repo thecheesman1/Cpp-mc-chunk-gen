@@ -5,6 +5,7 @@
 // Compiled with g++:    CPU mock execution via cuda_mock.h (include path)
 //=============================================================================
 #include "generator.h"
+#include "noise_simd.h"
 #include <cmath>
 #include <cstdint>
 #include <cstring>

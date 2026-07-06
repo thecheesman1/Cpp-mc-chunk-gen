@@ -29,6 +29,12 @@
 
 Both modes produce the same output: valid Anvil-format `.mca` files that Minecraft loads without complaint. It doesn't even know they weren't born in Java.
 
+## What's New
+
+- **`noise_simd.h`** — SIMD-friendly noise helpers that let `-O3 -ffast-math -march=native` auto-vectorize the Perlin FBM loop. No hand-written intrinsics (those actually hurt on NEON due to scalar perm table lookups).
+- **`compress_mca.py`** — Post-process uncompressed chunks into zlib or zstd. Generates at max speed, compresses later. `pip install zstandard` for zstd support.
+- **`yPos` fix** — Added `yPos` field to chunk NBT for 1.21 world compatibility.
+
 ---
 
 ## Performance

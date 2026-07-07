@@ -211,6 +211,18 @@ void launch_chunk_generator(ChunkBuffer d_buffer, int64_t chunk_x, int64_t chunk
         }
     }
 #else
+    // CUDA mode: allocate device memory, launch kernel, copy result back
+    block_t* d_ptr = nullptr;
+    cudaError_t err = cudaMalloc(&d_ptr, CHUNK_VOLUME * sizeof(block_t));
+    if (err != cudaSuccess) {
+        fprintf(stderr, "CUDA error: %d at %s:%d\n", err, __FILE__, __LINE__);
+        return;
+    }
+
+    ChunkBuffer dev_buf;
+    dev_buf.data = d_ptr;
+    dev_buf.size = d_buffer.size;
+
     // 2D grid of 8×8 blocks, each block processes 2×2 columns (4×32 threads = 128)
     dim3 block_dim(2, 32, 1);
     dim3 grid_dim(
@@ -220,6 +232,14 @@ void launch_chunk_generator(ChunkBuffer d_buffer, int64_t chunk_x, int64_t chunk
     );
 
     LAUNCH_KERNEL(generate_chunk_kernel, grid_dim, block_dim, stream,
-                  d_buffer, chunk_x, chunk_z, seed);
+                  dev_buf, chunk_x, chunk_z, seed);
+
+    err = cudaMemcpy(d_buffer.data, d_ptr, CHUNK_VOLUME * sizeof(block_t),
+                     cudaMemcpyDeviceToHost);
+    if (err != cudaSuccess) {
+        fprintf(stderr, "CUDA memcpy error: %d at %s:%d\n", err, __FILE__, __LINE__);
+    }
+
+    cudaFree(d_ptr);
 #endif
 }

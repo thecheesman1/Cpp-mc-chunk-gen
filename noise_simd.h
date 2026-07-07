@@ -12,6 +12,9 @@
 #ifndef NOISE_SIMD_H
 #define NOISE_SIMD_H
 
+// Skip if compiled alongside generator.cu (which has its own)
+#if !defined(__CUDACC__)
+
 #include <cstdint>
 #include <cmath>
 
@@ -119,4 +122,5 @@ static inline void compute_chunk_heights(int heights[16][16],
     }
 }
 
+#endif // !__CUDACC__
 #endif // NOISE_SIMD_H

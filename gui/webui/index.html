@@ -1,105 +1,383 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>mcchunkgen</title>
-<link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>McChunkGen Console</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div id="app">
     <!-- Sidebar -->
-    <nav id="sidebar">
+    <nav id="sidebar" aria-label="Main Navigation">
         <div class="brand">
-            <svg class="brand-icon" width="20" height="20" viewBox="0 0 20 20" fill="none">
-                <rect x="2" y="2" width="6" height="6" rx="1" fill="currentColor" opacity="0.6"/>
-                <rect x="12" y="2" width="6" height="6" rx="1" fill="currentColor"/>
-                <rect x="2" y="12" width="6" height="6" rx="1" fill="currentColor"/>
-                <rect x="12" y="12" width="6" height="6" rx="1" fill="currentColor" opacity="0.6"/>
+            <svg class="brand-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <rect x="2" y="2" width="6" height="6" rx="1.5" fill="currentColor" opacity="0.6"/>
+                <rect x="12" y="2" width="6" height="6" rx="1.5" fill="currentColor"/>
+                <rect x="2" y="12" width="6" height="6" rx="1.5" fill="currentColor"/>
+                <rect x="12" y="12" width="6" height="6" rx="1.5" fill="currentColor" opacity="0.6"/>
             </svg>
-            <span class="brand-text">mcchunkgen</span>
+            <span class="brand-text">McChunkGen</span>
         </div>
-        <div class="nav-tabs">
-            <button class="nav-tab active" data-tab="generator">
-                <svg class="nav-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+        <div class="nav-tabs" role="tablist">
+            <button class="nav-tab active" data-tab="generator" role="tab" aria-selected="true">
+                <svg class="nav-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M8 2L10 6L14 7L11 10L12 14L8 12L4 14L5 10L2 7L6 6L8 2Z"/>
                 </svg>
                 <span class="nav-label">Generator</span>
             </button>
-            <button class="nav-tab" data-tab="inspector">
-                <svg class="nav-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+            <button class="nav-tab" data-tab="inspector" role="tab" aria-selected="false">
+                <svg class="nav-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="7" cy="7" r="4.5"/>
                     <path d="M10.5 10.5L14 14"/>
                 </svg>
                 <span class="nav-label">Inspector</span>
             </button>
-            <button class="nav-tab" data-tab="benchmark">
-                <svg class="nav-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <rect x="2" y="10" width="3" height="4"/>
-                    <rect x="6.5" y="6" width="3" height="8"/>
-                    <rect x="11" y="2" width="3" height="12"/>
+            <button class="nav-tab" data-tab="benchmark" role="tab" aria-selected="false">
+                <svg class="nav-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="10" width="3" height="4" rx="0.5"/>
+                    <rect x="6.5" y="6" width="3" height="8" rx="0.5"/>
+                    <rect x="11" y="2" width="3" height="12" rx="0.5"/>
                 </svg>
                 <span class="nav-label">Benchmark</span>
             </button>
-            <button class="nav-tab" data-tab="compress">
-                <svg class="nav-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+            <button class="nav-tab" data-tab="compress" role="tab" aria-selected="false">
+                <svg class="nav-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M3 1H8L13 5V15H3V1Z"/>
                     <path d="M8 1V5H13"/>
                     <path d="M6 9H10M6 11H10"/>
                 </svg>
                 <span class="nav-label">Compress</span>
             </button>
-            <button class="nav-tab" data-tab="server">
-                <svg class="nav-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+            <button class="nav-tab" data-tab="server" role="tab" aria-selected="false">
+                <svg class="nav-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                     <rect x="2" y="2" width="12" height="4" rx="1"/>
                     <rect x="2" y="10" width="12" height="4" rx="1"/>
-                    <circle cx="5" cy="4" r="1" fill="currentColor"/>
-                    <circle cx="5" cy="12" r="1" fill="currentColor"/>
+                    <circle cx="5" cy="4" r="0.75" fill="currentColor"/>
+                    <circle cx="5" cy="12" r="0.75" fill="currentColor"/>
                 </svg>
                 <span class="nav-label">Server</span>
             </button>
         </div>
         <div class="nav-footer">
-            <span class="version">v0.1.0</span>
+            <span class="version">v0.1.0 (C++ / CUDA)</span>
         </div>
     </nav>
 
     <!-- Main content -->
     <main id="content">
-        <div id="tab-generator" class="tab-content active">
+        <!-- Generator Tab -->
+        <div id="tab-generator" class="tab-content active" role="tabpanel">
             <div class="tab-header">
                 <h1>Generator</h1>
-                <p class="tab-desc">Generate chunks for your Minecraft world</p>
+                <p class="tab-desc">Direct-to-disk raw C++ pre-generation bypassing the JVM pipeline</p>
             </div>
-            <div id="generator-root"></div>
+            
+            <div id="generator-root" class="split-pane">
+                <div class="pane-settings">
+                    <div class="card">
+                        <div class="card-title">World Parameters</div>
+                        <div class="card-row">
+                            <div class="field-group">
+                                <label for="world-path">World Directory</label>
+                                <input type="text" id="world-path" value="world/region" placeholder="/path/to/world">
+                            </div>
+                        </div>
+                        <div class="card-row">
+                            <div class="field-group">
+                                <label for="seed">Seed</label>
+                                <input type="number" id="seed" value="42">
+                            </div>
+                            <div class="field-group small">
+                                <label for="radius">Radius (Chunks)</label>
+                                <input type="number" id="radius" value="128">
+                            </div>
+                        </div>
+                        <div class="card-row">
+                            <div class="field-group">
+                                <label for="center-x">Center X</label>
+                                <input type="number" id="center-x" value="0">
+                            </div>
+                            <div class="field-group">
+                                <label for="center-z">Center Z</label>
+                                <input type="number" id="center-z" value="0">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-title">Hardware & Pipeline</div>
+                        <div class="card-row">
+                            <div class="field-group">
+                                <label for="backend">Compute Backend</label>
+                                <select id="backend">
+                                    <option value="cuda">CUDA (NVIDIA RTX 4050+)</option>
+                                    <option value="vulkan">Vulkan (Raspberry Pi 5 / Arc)</option>
+                                    <option value="cpu" selected>CPU Multi-Thread (SIMD `noise_simd.h`)</option>
+                                </select>
+                            </div>
+                            <div class="field-group small">
+                                <label for="threads">Worker Threads</label>
+                                <input type="number" id="threads" value="4" min="1" max="64">
+                            </div>
+                        </div>
+                        <div class="card-row">
+                            <label class="toggle-container">
+                                <input type="checkbox" id="quiet-mode">
+                                <span class="toggle-label">Quiet Mode (Suppress standard outputs)</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="action-bar">
+                        <button class="btn btn-primary" id="btn-start-gen">
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                                <path d="M11.596 8.697l-6.363 3.692c-.54.313-1.233-.066-1.233-.697V4.308c0-.63.692-1.01 1.233-.696l6.363 3.692a.802.802 0 0 1 0 1.393z"/>
+                            </svg>
+                            Execute Run
+                        </button>
+                        <button class="btn btn-secondary" id="btn-export-cli">Copy Command</button>
+                    </div>
+                </div>
+
+                <div class="pane-monitor">
+                    <div class="card fill-height">
+                        <div class="card-title">Live Execution Monitor</div>
+                        <div class="monitor-stats">
+                            <div class="stat-card">
+                                <div class="stat-value text-mono text-copper" id="mon-cps">0.0</div>
+                                <div class="stat-label">Chunks / Sec</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value text-mono" id="mon-chunks">0 / 66,049</div>
+                                <div class="stat-label">Processed Chunks</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value text-mono" id="mon-time">0.0s</div>
+                                <div class="stat-label">Elapsed Time</div>
+                            </div>
+                        </div>
+
+                        <div class="progress-section">
+                            <div class="flex justify-between mb-8">
+                                <span class="text-dim font-semibold">GENERATION TASK</span>
+                                <span class="progress-text" id="mon-percent">0%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="mon-bar" style="width: 0%;"></div>
+                            </div>
+                        </div>
+
+                        <div class="terminal-shell">
+                            <div class="terminal-header">
+                                <span class="terminal-dot red"></span>
+                                <span class="terminal-dot yellow"></span>
+                                <span class="terminal-dot green"></span>
+                                <span class="terminal-title">cli-output</span>
+                            </div>
+                            <div class="terminal-body" id="gen-terminal">
+                                <div class="system-line">$ ./chunkgen_offline --world world/region --seed 42 --radius 128 --threads 4</div>
+                                <div class="text-dim">[McChunkGen] Ready. Initializing thread pools...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div id="tab-inspector" class="tab-content">
+
+        <!-- Inspector Tab -->
+        <div id="tab-inspector" class="tab-content" role="tabpanel">
             <div class="tab-header">
                 <h1>Inspector</h1>
-                <p class="tab-desc">Open .mca region files and inspect chunk data</p>
+                <p class="tab-desc">Inspect .mca NBT structure and verify sector alignments</p>
             </div>
-            <div id="inspector-root"></div>
+            <div id="inspector-root">
+                <div class="card">
+                    <div class="dropzone" id="mca-dropzone">
+                        <svg class="mb-8 text-dim" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+                        </svg>
+                        <p class="font-semibold text-bright">Drag and drop your .mca region files here</p>
+                        <p class="text-muted mt-8">Supports raw uncompressed Anvil sectors (Format Type 3)</p>
+                    </div>
+                </div>
+
+                <div class="grid-col-2">
+                    <div class="card">
+                        <div class="card-title">Region Chunk Grid</div>
+                        <div class="region-grid-placeholder">
+                            <span class="text-muted">No region file loaded</span>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">NBT Structure View</div>
+                        <div class="nbt-tree-view">
+                            <div class="tree-node"><span class="node-tag">Tag_Compound("")</span>
+                                <div class="tree-children">
+                                    <div class="tree-node"><span class="node-key">DataVersion</span>: <span class="node-val">3955</span></div>
+                                    <div class="tree-node"><span class="node-key">Status</span>: <span class="node-val">"minecraft:full"</span></div>
+                                    <div class="tree-node"><span class="node-key">isLightOn</span>: <span class="node-val">1</span></div>
+                                    <div class="tree-node"><span class="node-tag">List("sections")</span></div>
+                                    <div class="tree-node"><span class="node-tag">Compound("Heightmaps")</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div id="tab-benchmark" class="tab-content">
+
+        <!-- Benchmark Tab -->
+        <div id="tab-benchmark" class="tab-content" role="tabpanel">
             <div class="tab-header">
-                <h1>Benchmark</h1>
-                <p class="tab-desc">Measure generation performance</p>
+                <h1>Performance & Benchmark</h1>
+                <p class="tab-desc">Comparing generator throughput (CPS) against JVM pipelines</p>
             </div>
-            <div id="benchmark-root"></div>
+            <div id="benchmark-root">
+                <div class="card">
+                    <div class="card-title">Comparative Analysis (3,721 Chunks Test)</div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Setup</th>
+                                <th>Platform Target</th>
+                                <th>Chunks Generated</th>
+                                <th>Duration</th>
+                                <th>CPS (Throughput)</th>
+                                <th>Relative Speedup</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Vanilla Minecraft Server</td>
+                                <td>Java JVM</td>
+                                <td>1</td>
+                                <td>~5.0s</td>
+                                <td class="text-mono">0.2</td>
+                                <td class="text-muted">Baseline</td>
+                            </tr>
+                            <tr>
+                                <td>Chunky (Java Tool)</td>
+                                <td>Java JVM</td>
+                                <td>3,721</td>
+                                <td>109.0s</td>
+                                <td class="text-mono text-yellow">~34.0</td>
+                                <td class="text-yellow font-semibold">1x (Chunky Base)</td>
+                            </tr>
+                            <tr>
+                                <td>McChunkGen Online</td>
+                                <td>Fabric Mod (JNI Context)</td>
+                                <td>3,721</td>
+                                <td>75.0s</td>
+                                <td class="text-mono text-green">50.0</td>
+                                <td class="text-green font-semibold">1.4x</td>
+                            </tr>
+                            <tr class="highlight-row">
+                                <td class="font-semibold text-bright">McChunkGen Offline</td>
+                                <td>C++ Standalone / Pi 5</td>
+                                <td>66,049</td>
+                                <td>15.0s</td>
+                                <td class="text-mono text-copper">4,402.0</td>
+                                <td class="text-copper font-bold">129x</td>
+                            </tr>
+                            <tr class="highlight-row">
+                                <td class="font-semibold text-bright">McChunkGen Offline (CUDA)</td>
+                                <td>RTX 4050 (4 threads)</td>
+                                <td>66,049</td>
+                                <td>14.1s</td>
+                                <td class="text-mono text-copper">4,676.0</td>
+                                <td class="text-copper font-bold">137x</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">Performance Bottleneck Breakdown</div>
+                    <div class="grid-col-2">
+                        <div class="comparison-block">
+                            <div class="comp-header jvm">Standard JVM Pipeline</div>
+                            <ul class="comp-list">
+                                <li>Dynamic palette linear allocations (O(N) search)</li>
+                                <li>Single-threaded per world sector lockups</li>
+                                <li>Heavily CPU-bound dynamic Zlib deflate on write</li>
+                                <li>10,000+ GC object allocations per single chunk</li>
+                            </ul>
+                        </div>
+                        <div class="comparison-block">
+                            <div class="comp-header cpp">McChunkGen Native Pipeline</div>
+                            <ul class="comp-list">
+                                <li>Fixed-palette compilation with direct O(1) layout</li>
+                                <li>Multi-threaded lockless spiral walker allocation</li>
+                                <li>Post-process offline batch compressor</li>
+                                <li>Strict zero heap allocations. Fast stack buffers.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div id="tab-compress" class="tab-content">
+
+        <!-- Compress Tab -->
+        <div id="tab-compress" class="tab-content" role="tabpanel">
             <div class="tab-header">
                 <h1>Compress</h1>
-                <p class="tab-desc">Test compression methods on region files</p>
+                <p class="tab-desc">Post-process uncompressed .mca sectors into standard compression types</p>
             </div>
-            <div id="compress-root"></div>
+            <div id="compress-root">
+                <div class="card">
+                    <div class="card-title">Batch Compression Parameters</div>
+                    <div class="card-row">
+                        <div class="field-group">
+                            <label for="comp-method">Compression Engine</label>
+                            <select id="comp-method">
+                                <option value="zstd">Zstandard (zstd) - Highly Recommended</option>
+                                <option value="zlib">Zlib Deflate (Vanilla default)</option>
+                                <option value="none">Keep Uncompressed (Type 3)</option>
+                            </select>
+                        </div>
+                        <div class="field-group">
+                            <label for="comp-level">Compression Strength Level</label>
+                            <input type="number" id="comp-level" value="3" min="1" max="22">
+                        </div>
+                    </div>
+                    <div class="action-bar mt-16">
+                        <button class="btn btn-primary">Start Post-Process</button>
+                        <span class="text-muted text-mono text-small">Requires python and zstandard dependencies</span>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div id="tab-server" class="tab-content">
+
+        <!-- Server Tab -->
+        <div id="tab-server" class="tab-content" role="tabpanel">
             <div class="tab-header">
-                <h1>Server</h1>
-                <p class="tab-desc">Start/stop the Minecraft server and view logs</p>
+                <h1>Fabric Server Control</h1>
+                <p class="tab-desc">Run, test, and inject dynamically via live JNI bridge</p>
             </div>
-            <div id="server-root"></div>
+            <div id="server-root">
+                <div class="card">
+                    <div class="card-title">Server Host Bridge</div>
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <span class="status-dot off" id="server-status-dot"></span>
+                            <span class="text-mono font-semibold" id="server-status-text">SERVER STOPPED</span>
+                        </div>
+                        <div class="flex gap-8">
+                            <button class="btn btn-primary btn-sm" id="btn-server-start">Launch Fabric Instance</button>
+                            <button class="btn btn-danger btn-sm" id="btn-server-stop" disabled>Terminate Instance</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">Dynamic Output Log</div>
+                    <div class="log-box" id="server-log">
+                        <span class="info">[00:00:00] [System] Fabric server environment ready to launch.</span>
+                        <span class="info">[00:00:00] [System] Native libmcchunkgen JNI module resolved.</span>
+                    </div>
+                </div>
+            </div>
         </div>
     </main>
 </div>

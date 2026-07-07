@@ -51,6 +51,9 @@ const API = {
     async benchmark() {
         return this.post('/api/benchmark');
     },
+    async compress(params) {
+        return this.post('/api/compress', params);
+    },
     async serverStart() {
         return this.post('/api/server/start');
     },

@@ -152,25 +152,27 @@ static const char* block_name(block_t id) {
     }
 }
 
-// Pre-computed block state palette lookup: block_id → palette entry index
-// This avoids linear search during palette construction.
-static int palette_lookup[256];
-static std::string palette_names[256];
-static int palette_size = 0;
+//=============================================================================
+// Block palette: maps block IDs to Minecraft names + deduplication
+// Uses a struct wrapper for portable static init (no __attribute__((constructor)))
+//=============================================================================
+struct BlockPalette {
+    int lookup[256] = {};
+    std::string names[256];
+    int size = 0;
 
-__attribute__((constructor))
-static void init_palette() {
-    for (int i = 0; i < 256; i++) {
-        palette_names[i] = block_name(i);
-        // Deduplicate: if this block name equals a previous one, reuse the index
-        int found = -1;
-        for (int j = 0; j < i; j++) {
-            if (palette_names[j] == palette_names[i]) { found = j; break; }
+    BlockPalette() {
+        for (int i = 0; i < 256; i++) {
+            names[i] = block_name(i);
+            int found = -1;
+            for (int j = 0; j < i; j++) {
+                if (names[j] == names[i]) { found = j; break; }
+            }
+            lookup[i] = (found >= 0) ? lookup[found] : size++;
         }
-        if (found >= 0) palette_lookup[i] = palette_lookup[found];
-        else palette_lookup[i] = palette_size++;
     }
-}
+};
+static BlockPalette palette;
 
 // Fixed palette entries for blocks that actually appear in the generator
 static const block_t ACTIVE_BLOCKS[] = {

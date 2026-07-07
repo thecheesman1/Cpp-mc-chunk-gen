@@ -62,8 +62,8 @@ struct Progress {
         double cps = elapsed > 0 ? w / elapsed : 0;
         int pct = (int)(100.0 * w / total.load());
         if (!cfg.quiet) {
-            printf("\r[McChunkGen] %ld/%ld (%d%%) — %.0f CPS, %.1fs",
-                   (long)w, (long)total.load(), pct, cps, elapsed);
+            printf("\r[McChunkGen] %lld/%lld (%d%%) — %.0f CPS, %.1fs",
+                   (long long)w, (long long)total.load(), pct, cps, elapsed);
             fflush(stdout);
         }
     }
@@ -247,10 +247,10 @@ int main(int argc, char** argv) {
     progress.total.store((int64_t)all_jobs.size());
 
     if (!cfg.quiet) {
-        printf("[McChunkGen] %ld chunks at (%d,%d) radius %d\n",
-               (long)total, cfg.center_x, cfg.center_z, cfg.radius);
-        printf("[McChunkGen] World: %s | Seed: %ld | Threads: %d\n",
-               cfg.world_path.c_str(), cfg.seed, cfg.threads);
+        printf("[McChunkGen] %lld chunks at (%d,%d) radius %d\n",
+               (long long)total, cfg.center_x, cfg.center_z, cfg.radius);
+        printf("[McChunkGen] World: %s | Seed: %lld | Threads: %d\n",
+               cfg.world_path.c_str(), (long long)cfg.seed, cfg.threads);
     }
 
     // Divide work — capture job vectors by value (moved into lambda) to avoid dangling refs
@@ -299,8 +299,8 @@ int main(int argc, char** argv) {
     double cps = elapsed > 0 ? w / elapsed : 0;
 
     if (!cfg.quiet) {
-        printf("\n[McChunkGen] Done! %ld chunks in %.1fs (%.0f CPS)\n",
-               (long)w, elapsed, cps);
+        printf("\n[McChunkGen] Done! %lld chunks in %.1fs (%.0f CPS)\n",
+               (long long)w, elapsed, cps);
     }
     return 0;
 }

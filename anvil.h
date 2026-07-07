@@ -292,7 +292,7 @@ static size_t serialize_chunk(uint8_t* blocks, int cx, int cz,
     nb.tag_int("DataVersion", DATA_VERSION);
     nb.tag_int("xPos", cx);
     nb.tag_int("zPos", cz);
-    nb.tag_int("yPos", -64);  // min Y for 1.21 world
+    nb.tag_int("yPos", MIN_SECTION_Y);  // min section index (-4 for 1.21 world)
     nb.tag_string("Status", "minecraft:full");
     nb.tag_byte("isLightOn", 1);
 

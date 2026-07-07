@@ -46,6 +46,7 @@ struct ChunkBuffer {
 // Launches the CUDA kernel (or mock) that fills d_buffer with terrain.
 //=============================================================================
 void launch_chunk_generator(ChunkBuffer d_buffer, int64_t chunk_x, int64_t chunk_z,
-                             int64_t seed, cudaStream_t stream = nullptr);
+                             int64_t seed, void* device_buf = nullptr,
+                             cudaStream_t stream = nullptr);
 
 #endif // GENERATOR_H

@@ -164,6 +164,16 @@ static void worker_thread(int64_t seed, const std::vector<ChunkJob>& jobs,
     // Uncompressed NBT: ~130KB per chunk, allocate 256KB for safety
     std::vector<uint8_t> nbt_buf(256 * 1024);
 
+#ifdef __CUDACC__
+    // Pre-allocate device memory once per thread for CUDA
+    block_t* device_buf = nullptr;
+    cudaError_t err = cudaMalloc(&device_buf, CHUNK_VOLUME * sizeof(block_t));
+    if (err != cudaSuccess) {
+        fprintf(stderr, "CUDA device alloc failed: %d\n", err);
+        device_buf = nullptr;
+    }
+#endif
+
     for (const auto& job : jobs) {
         // Generate terrain (Vulkan if available, CPU fallback otherwise)
         ChunkBuffer buf;
@@ -171,7 +181,7 @@ static void worker_thread(int64_t seed, const std::vector<ChunkJob>& jobs,
         if (vk_gen && vk_gen->is_available()) {
             vk_gen->generate(buf, job.cx, job.cz, seed);
         } else {
-            launch_chunk_generator(buf, job.cx, job.cz, seed);
+            launch_chunk_generator(buf, job.cx, job.cz, seed, device_buf);
         }
 
         // Serialize to NBT (uncompressed)
@@ -187,6 +197,10 @@ static void worker_thread(int64_t seed, const std::vector<ChunkJob>& jobs,
 
         progress.written.fetch_add(1);
     }
+
+#ifdef __CUDACC__
+    if (device_buf) cudaFree(device_buf);
+#endif
 }
 
 //=============================================================================

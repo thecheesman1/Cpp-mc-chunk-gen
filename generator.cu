@@ -165,7 +165,8 @@ __global__ void generate_chunk_kernel(ChunkBuffer buffer, int64_t chunk_x, int64
 // Host-callable chunk generator — launches the kernel and syncs
 //=============================================================================
 void launch_chunk_generator(ChunkBuffer d_buffer, int64_t chunk_x, int64_t chunk_z,
-                             int64_t seed, cudaStream_t stream) {
+                             int64_t seed, void* device_buf,
+                             cudaStream_t stream) {
 #ifndef __CUDACC__
     // CPU mock mode: call the kernel directly as a simple double loop,
     // bypassing the expensive mock CUDA thread-launch machinery.
@@ -211,12 +212,15 @@ void launch_chunk_generator(ChunkBuffer d_buffer, int64_t chunk_x, int64_t chunk
         }
     }
 #else
-    // CUDA mode: allocate device memory, launch kernel, copy result back
-    block_t* d_ptr = nullptr;
-    cudaError_t err = cudaMalloc(&d_ptr, CHUNK_VOLUME * sizeof(block_t));
-    if (err != cudaSuccess) {
-        fprintf(stderr, "CUDA error: %d at %s:%d\n", err, __FILE__, __LINE__);
-        return;
+    // CUDA mode: use pre-allocated device buffer or allocate one
+    block_t* d_ptr = (block_t*)device_buf;
+    bool own_alloc = (d_ptr == nullptr);
+    if (own_alloc) {
+        cudaError_t err = cudaMalloc(&d_ptr, CHUNK_VOLUME * sizeof(block_t));
+        if (err != cudaSuccess) {
+            fprintf(stderr, "CUDA error: %d at %s:%d\n", err, __FILE__, __LINE__);
+            return;
+        }
     }
 
     ChunkBuffer dev_buf;
@@ -234,12 +238,12 @@ void launch_chunk_generator(ChunkBuffer d_buffer, int64_t chunk_x, int64_t chunk
     LAUNCH_KERNEL(generate_chunk_kernel, grid_dim, block_dim, stream,
                   dev_buf, chunk_x, chunk_z, seed);
 
-    err = cudaMemcpy(d_buffer.data, d_ptr, CHUNK_VOLUME * sizeof(block_t),
+    cudaError_t err = cudaMemcpy(d_buffer.data, d_ptr, CHUNK_VOLUME * sizeof(block_t),
                      cudaMemcpyDeviceToHost);
     if (err != cudaSuccess) {
         fprintf(stderr, "CUDA memcpy error: %d at %s:%d\n", err, __FILE__, __LINE__);
     }
 
-    cudaFree(d_ptr);
+    if (own_alloc) cudaFree(d_ptr);
 #endif
 }

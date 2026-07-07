@@ -21,6 +21,9 @@ jobs:
       - name: Configure CMake
         run: cmake -B build
 
+      - name: Build CLI
+        run: cmake --build build --target chunkgen_offline --config Release
+
       - name: Build GUI
         run: cmake --build build --target mcchunkgen-gui --config Release
 
@@ -28,7 +31,9 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path mcchunkgen-windows
+          Copy-Item "build/Release/chunkgen_offline.exe" -Destination "mcchunkgen-windows/" -ErrorAction SilentlyContinue
           Copy-Item "build/Release/mcchunkgen-gui.exe" -Destination "mcchunkgen-windows/" -ErrorAction SilentlyContinue
+          Copy-Item "build/chunkgen_offline.exe" -Destination "mcchunkgen-windows/" -ErrorAction SilentlyContinue
           Copy-Item "build/mcchunkgen-gui.exe" -Destination "mcchunkgen-windows/" -ErrorAction SilentlyContinue
           Copy-Item -Recurse "gui/webui" -Destination "mcchunkgen-windows/gui/" -ErrorAction SilentlyContinue
           Copy-Item "README.md" -Destination "mcchunkgen-windows/" -ErrorAction SilentlyContinue
@@ -41,7 +46,7 @@ jobs:
           path: mcchunkgen-windows.zip
 
   build-linux:
-    name: Linux (GUI Only)
+    name: Linux (GUI + CLI)
     runs-on: ubuntu-latest
 
     steps:
@@ -56,12 +61,16 @@ jobs:
       - name: Configure CMake
         run: cmake -B build
 
+      - name: Build CLI
+        run: cmake --build build --target chunkgen_offline
+
       - name: Build GUI
         run: cmake --build build --target mcchunkgen-gui
 
       - name: Package
         run: |
           mkdir -p mcchunkgen-linux/gui/webui
+          cp build/chunkgen_offline mcchunkgen-linux/ 2>/dev/null || true
           cp build/mcchunkgen-gui mcchunkgen-linux/ 2>/dev/null || true
           cp -r gui/webui/* mcchunkgen-linux/gui/webui/
           cp README.md mcchunkgen-linux/
@@ -89,18 +98,28 @@ jobs:
           body: |
             ## McChunkGen ${{ github.ref_name }}
 
-            ### Downloads
-            - **Windows**: `mcchunkgen-windows.zip` (GUI + web UI)
-            - **Linux**: `mcchunkgen-linux.tar.gz` (GUI + web UI)
+            Pre-built binaries for Windows and Linux. No compile step needed.
 
-            ### Usage
-            1. Extract the archive
-            2. Run `mcchunkgen-gui` to open the web UI in your browser
-            3. The CLI `chunkgen_offline` needs CUDA toolkit to build from source
+            ### Downloads
+            - **Windows**: `mcchunkgen-windows.zip` (CLI + GUI + web UI)
+            - **Linux**: `mcchunkgen-linux.tar.gz` (CLI + GUI + web UI)
 
             ### What's included
-            - GUI server (auto-opens browser)
-            - Full web UI with Generator, Inspector, Benchmark, Compress, Server tabs
+            - `chunkgen_offline` — CLI chunk generator (CPU mode, SIMD)
+            - `mcchunkgen-gui` — HTTP server + auto-opens browser
+            - Full web UI: Generator, Inspector, Benchmark, Compress, Server tabs
+
+            ### Quick start
+            1. Extract the archive
+            2. Double-click `mcchunkgen-gui` to open the web UI
+            3. Or run `chunkgen_offline --help` from terminal
+
+            ### Build from source (with CUDA)
+            Requires CUDA toolkit and CMake.
+            ```bash
+            cmake -B build
+            cmake --build build
+            ```
           files: |
             mcchunkgen-windows/mcchunkgen-windows.zip
             mcchunkgen-linux/mcchunkgen-linux.tar.gz

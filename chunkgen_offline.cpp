@@ -162,7 +162,7 @@ static void worker_thread(int64_t seed, const std::vector<ChunkJob>& jobs,
                           VkChunkGenerator* vk_gen = nullptr) {
     std::vector<uint8_t> blocks(CHUNK_VOLUME);
     // Uncompressed NBT: ~130KB per chunk, allocate 256KB for safety
-    std::vector<uint8_t> nbt_buf(256 * 1024);
+    std::vector<uint8_t> nbt_buf(512 * 1024);
 
 #ifdef __CUDACC__
     // Pre-allocate device memory once per thread for CUDA
@@ -172,6 +172,8 @@ static void worker_thread(int64_t seed, const std::vector<ChunkJob>& jobs,
         fprintf(stderr, "CUDA device alloc failed: %d\n", err);
         device_buf = nullptr;
     }
+#else
+    block_t* device_buf = nullptr; // unused in CPU mode
 #endif
 
     for (const auto& job : jobs) {

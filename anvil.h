@@ -19,17 +19,22 @@
 // Fallback to zlib via external helper if needed.
 //=============================================================================
 
-// Minecraft 1.21.11 data version
-static constexpr int DATA_VERSION = 3955;
+// Minecraft 1.21.11 data version (from server jar version.json)
+static constexpr int DATA_VERSION = 4671;
 
 // Chunk section height: 16 blocks
 static constexpr int SECTION_SIZE_Y = 16;
-// Number of sections in native 0..255 range
-static constexpr int NATIVE_SECTIONS = 16; // 256/16
+// Number of sections in full 1.21 world height (-64..319 = 384 blocks)
+static constexpr int NATIVE_SECTIONS = 24; // 384/16
+// Minimum section Y index for the world
+static constexpr int MIN_SECTION_Y = -4; // sections -4, -3, -2, -1, 0, 1, ... 19
 // Chunk column dimensions
 static constexpr int CHUNK_SIZE = 16;
 // Blocks per section
 static constexpr int SECTION_VOLUME = CHUNK_SIZE * CHUNK_SIZE * SECTION_SIZE_Y; // 4096
+
+// Full world height in blocks
+static constexpr int WORLD_HEIGHT = NATIVE_SECTIONS * SECTION_SIZE_Y; // 384
 
 //=============================================================================
 // BitStorage packing helpers (Minecraft PalettedContainer format)
@@ -93,12 +98,12 @@ struct Palette {
 // Compute WORLD_SURFACE heightmap from block data
 // heightmap[y] = highest non-air block in column (x, z)
 static void compute_heightmap(const uint8_t* blocks, int heightmap[CHUNK_SIZE][CHUNK_SIZE],
-                               int min_y, int max_y) {
+                               int min_y, int max_y, int y_stride = 256) {
     for (int x = 0; x < CHUNK_SIZE; x++) {
         for (int z = 0; z < CHUNK_SIZE; z++) {
             int h = min_y - 1;
             for (int y = max_y - 1; y >= min_y; y--) {
-                int idx = (z * CHUNK_SIZE + x) * 256 + y;
+                int idx = (z * CHUNK_SIZE + x) * y_stride + y;
                 if (blocks[idx] != BLOCK_AIR) {
                     h = y;
                     break;
@@ -254,13 +259,31 @@ static void write_biomes(NBTBuffer& nb) {
     nb.end_compound(); // biomes
 }
 
-// Serialize a single 16x256x16 chunk into NBT format for 1.21
+// Serialize a single 16x256x16 chunk into NBT format for 1.21.11
+// Takes a 256-height blocks array (y=0..255) and pads to full 384-height (-64..319)
 // Uses the pre-computed fixed palette for maximum speed.
 // Returns uncompressed NBT size (0 on failure)
 static size_t serialize_chunk(uint8_t* blocks, int cx, int cz,
                                uint8_t* out_buf, size_t out_cap) {
-    // Estimate: each section ~8KB + headers ~2KB = ~130KB uncompressed for 16 sections
-    // We need out_cap >= ~150KB
+    // Create padded block array for full height (-64..319 = 384 blocks)
+    uint8_t full_blocks[16 * WORLD_HEIGHT * 16];
+    memset(full_blocks, 0, sizeof(full_blocks));
+
+    // Fill bottom sections (-64 to -1) with stone; bedrock at very bottom
+    for (int x = 0; x < 16; x++) {
+        for (int z = 0; z < 16; z++) {
+            for (int y = -64; y < 0; y++) {
+                int idx = (z * 16 + x) * WORLD_HEIGHT + (y + 64);
+                full_blocks[idx] = (y == -64) ? BLOCK_BEDROCK : BLOCK_STONE;
+            }
+            // Copy generated blocks (y=0..255)
+            for (int y = 0; y < 256; y++) {
+                int dst_idx = (z * 16 + x) * WORLD_HEIGHT + (y + 64);
+                full_blocks[dst_idx] = blocks[(z * 16 + x) * 256 + y];
+            }
+            // Top sections (y=256..319) stay as air (already zeroed)
+        }
+    }
 
     NBTBuffer nb;
 
@@ -269,35 +292,33 @@ static size_t serialize_chunk(uint8_t* blocks, int cx, int cz,
     nb.tag_int("DataVersion", DATA_VERSION);
     nb.tag_int("xPos", cx);
     nb.tag_int("zPos", cz);
-    nb.tag_int("yPos", 0);   // min section Y (our world: y=0..255 → Y=0)
+    nb.tag_int("yPos", -64);  // min Y for 1.21 world
     nb.tag_string("Status", "minecraft:full");
     nb.tag_byte("isLightOn", 1);
 
-    // Generate sections (16 sections covering y=0..255)
+    // Generate sections (24 sections covering y=-64..319)
     nb.begin_list("sections", TAG_Compound, NATIVE_SECTIONS);
 
     // Scratch buffer to reorder column-major blocks into section order
     uint8_t section_scratch[SECTION_VOLUME];
 
     for (int sec = 0; sec < NATIVE_SECTIONS; sec++) {
-        int base_y = sec * SECTION_SIZE_Y;
+        int sec_y = MIN_SECTION_Y + sec; // section Y index: -4, -3, -2, -1, 0, ... 19
+        int base_y_offset = (sec_y * SECTION_SIZE_Y) + 64; // offset into full_blocks (0-indexed)
 
-        // Reorder from column-major (z*16+x)*256+y to section order
+        // Reorder from column-major to section YZX order
         for (int x = 0; x < 16; x++) {
             for (int z = 0; z < 16; z++) {
                 for (int ly = 0; ly < 16; ly++) {
-                    int src_idx = (z * 16 + x) * 256 + (base_y + ly);
-                    int dst_idx = (x * 16 + z) * 16 + ly; // or (z*16+x)*16+ly for z-major
-                    // Actually, Minecraft's section format is YZX order:
-                    // index = (y * 16 + z) * 16 + x
+                    int src_idx = (z * 16 + x) * WORLD_HEIGHT + (base_y_offset + ly);
                     int mc_idx = ly * 256 + z * 16 + x;
-                    section_scratch[mc_idx] = blocks[src_idx];
+                    section_scratch[mc_idx] = full_blocks[src_idx];
                 }
             }
         }
 
         nb.begin_compound();
-        nb.tag_byte("Y", (int8_t)base_y);
+        nb.tag_byte("Y", (int8_t)sec_y);
 
         // Use the fast fixed-palette writer
         write_block_states_fast(nb, section_scratch);
@@ -306,10 +327,17 @@ static size_t serialize_chunk(uint8_t* blocks, int cx, int cz,
     }
     nb.end_list();
 
-    // Heightmaps
+    // Heightmaps (computed on full height range)
     int hm_world_surface[16][16], hm_ocean_floor[16][16];
-    compute_heightmap(blocks, hm_world_surface, 0, 256);
-    compute_heightmap(blocks, hm_ocean_floor, 0, 256);
+    compute_heightmap(full_blocks, hm_world_surface, 0, WORLD_HEIGHT, WORLD_HEIGHT);
+    compute_heightmap(full_blocks, hm_ocean_floor, 0, WORLD_HEIGHT, WORLD_HEIGHT);
+    // Adjust from zero-indexed to world Y coordinates (offset by -64)
+    for (int x = 0; x < 16; x++) {
+        for (int z = 0; z < 16; z++) {
+            hm_world_surface[x][z] -= 64;
+            hm_ocean_floor[x][z] -= 64;
+        }
+    }
     uint64_t packed_surface[36], packed_ocean[36];
     pack_heightmap(hm_world_surface, packed_surface);
     pack_heightmap(hm_ocean_floor, packed_ocean);

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>mcchunkgen</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+    <!-- Sidebar -->
+    <nav id="sidebar">
+        <div class="brand">
+            <span class="brand-icon">⛏</span>
+            <span class="brand-text">mcchunkgen</span>
+        </div>
+        <div class="nav-tabs">
+            <button class="nav-tab active" data-tab="generator">
+                <span class="nav-icon">⚙</span>
+                <span class="nav-label">Generator</span>
+            </button>
+            <button class="nav-tab" data-tab="inspector">
+                <span class="nav-icon">🔍</span>
+                <span class="nav-label">Inspector</span>
+            </button>
+            <button class="nav-tab" data-tab="benchmark">
+                <span class="nav-icon">📊</span>
+                <span class="nav-label">Benchmark</span>
+            </button>
+            <button class="nav-tab" data-tab="compress">
+                <span class="nav-icon">📦</span>
+                <span class="nav-label">Compress</span>
+            </button>
+            <button class="nav-tab" data-tab="server">
+                <span class="nav-icon">🖥</span>
+                <span class="nav-label">Server</span>
+            </button>
+        </div>
+        <div class="nav-footer">
+            <span class="version">v0.1.0</span>
+        </div>
+    </nav>
+
+    <!-- Main content -->
+    <main id="content">
+        <div id="tab-generator" class="tab-content active">
+            <div class="tab-header">
+                <h1>Generator</h1>
+                <p class="tab-desc">Generate chunks for your Minecraft world</p>
+            </div>
+            <div id="generator-root"></div>
+        </div>
+        <div id="tab-inspector" class="tab-content">
+            <div class="tab-header">
+                <h1>Inspector</h1>
+                <p class="tab-desc">Open .mca region files and inspect chunk data</p>
+            </div>
+            <div id="inspector-root"></div>
+        </div>
+        <div id="tab-benchmark" class="tab-content">
+            <div class="tab-header">
+                <h1>Benchmark</h1>
+                <p class="tab-desc">Measure generation performance</p>
+            </div>
+            <div id="benchmark-root"></div>
+        </div>
+        <div id="tab-compress" class="tab-content">
+            <div class="tab-header">
+                <h1>Compress</h1>
+                <p class="tab-desc">Test compression methods on region files</p>
+            </div>
+            <div id="compress-root"></div>
+        </div>
+        <div id="tab-server" class="tab-content">
+            <div class="tab-header">
+                <h1>Server</h1>
+                <p class="tab-desc">Start/stop the Minecraft server and view logs</p>
+            </div>
+            <div id="server-root"></div>
+        </div>
+    </main>
+</div>
+
+<script src="app.js"></script>
+<script src="tabs/generator.js"></script>
+<script src="tabs/inspector.js"></script>
+<script src="tabs/benchmark.js"></script>
+<script src="tabs/compress.js"></script>
+<script src="tabs/server.js"></script>
+</body>
+</html>

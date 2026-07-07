@@ -26,6 +26,7 @@
 #else
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <zlib.h>
 #endif
 
 //=============================================================================
@@ -186,7 +187,7 @@ static void worker_thread(int64_t seed, const std::vector<ChunkJob>& jobs,
             launch_chunk_generator(buf, job.cx, job.cz, seed, device_buf);
         }
 
-        // Serialize to NBT (uncompressed)
+        // Serialize to NBT then compress with zlib
         size_t nbt_size = serialize_chunk(blocks.data(), job.cx, job.cz,
                                            nbt_buf.data(), nbt_buf.size());
         if (nbt_size == 0) {
@@ -194,8 +195,16 @@ static void worker_thread(int64_t seed, const std::vector<ChunkJob>& jobs,
             continue;
         }
 
-        // Write immediately to region file (thread-safe)
-        rm.write_chunk(job.cx, job.cz, nbt_buf.data(), nbt_size);
+        // Compress with zlib (Minecraft format: compression type 2)
+        uLongf zsize = compressBound(nbt_size);
+        std::vector<uint8_t> zbuf(zsize);
+        if (compress2(zbuf.data(), &zsize, nbt_buf.data(), nbt_size, Z_BEST_COMPRESSION) != Z_OK) {
+            fprintf(stderr, "\n[ERROR] zlib compress failed (%d,%d)\n", job.cx, job.cz);
+            continue;
+        }
+
+        // Write compressed chunk to region file
+        rm.write_chunk(job.cx, job.cz, zbuf.data(), zsize);
 
         progress.written.fetch_add(1);
     }

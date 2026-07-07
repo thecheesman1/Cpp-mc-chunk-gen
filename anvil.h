@@ -467,7 +467,7 @@ public:
         long pos = (long)next_sector_ * 4096;
         fseek(fp_, pos, SEEK_SET);
         fwrite(hdr, 1, 4, fp_);
-        uint8_t compression_type = 3; // uncompressed (Minecraft 1.21+)
+        uint8_t compression_type = 2; // zlib (Minecraft 1.21.11)
         fwrite(&compression_type, 1, 1, fp_);
         fwrite(compressed_data, 1, compressed_size, fp_);
 

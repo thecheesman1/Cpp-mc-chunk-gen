@@ -8,6 +8,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set_source_files_properties(generator.cu PROPERTIES LANGUAGE CXX)
 
 # ============================================================
+# Threads
+# ============================================================
+find_package(Threads REQUIRED)
+
+# ============================================================
 # CLI target — offline chunk generator (CPU mock mode)
 # ============================================================
 add_executable(chunkgen_offline

@@ -1,4 +1,4 @@
-<img src="https://img.shields.io/badge/CPS-4402-success?style=for-the-badge"> <img src="https://img.shields.io/badge/Speedup-88x%20vs%20Chunky-blue?style=for-the-badge"> <img src="https://img.shields.io/badge/Platform-Pi%205%20%7C%20Windows%20%7C%20Vulkan-orange?style=for-the-badge">
+<img src="https://img.shields.io/badge/CPS-4676-success?style=for-the-badge"> <img src="https://img.shields.io/badge/Speedup-93x%20vs%20Chunky-blue?style=for-the-badge"> <img src="https://img.shields.io/badge/Platform-Pi%205%20%7C%20CUDA%204050-blue?style=for-the-badge">
 
 
 ---
@@ -13,9 +13,9 @@
 </p>
 
 <p align="center">
-  <code>66,049 chunks in 15 seconds.</code>
-  <code>4,402 chunks per second.</code>
-  <code>On a Raspberry Pi.</code>
+  <code>66,049 chunks in 14 seconds.</code>
+  <code>4,676 chunks per second.</code>
+  <code>On an RTX 4050 laptop.</code>
 </p>
 
 ---
@@ -52,17 +52,15 @@ All benchmarks on **Raspberry Pi 5** (4x Cortex-A76 @ 3.0GHz OC, 16GB LPDDR4X, P
 
 ### Windows Benchmarks
 
-All Windows benchmarks on **Intel Core Ultra 5 225U** (2P + 8E + 2LP cores, 16GB RAM, NVMe SSD, MinGW GCC 15.2.0, **CPU mock mode — no GPU**).
+All Windows benchmarks on **Intel Core i7-13620H** (6P + 4E cores, 16GB RAM, NVMe SSD, RTX 4050 Laptop 6GB).
 
 | Setup | Threads | Chunks | Time | CPS | Notes |
 |-------|---------|--------|-----:|----:|-------|
-| **Offline** (battery, 4 threads) | 4 | 66,049 | **TBD** | **TBD** | Balanced power plan, battery saver OFF |
-| **Offline** (plugged in, 4 threads) | 4 | 66,049 | **TBD** | **TBD** | — |
-| **Offline** (Pi 5, CPU mock, 4 threads) | 4 | 66,049 | **15.0s** | **4402** | 6.12.47 kernel, aarch64, g++ 14.2 |
-| **Offline** (plugged in, Vulkan) | — | 66,049 | **TBD** | **TBD** | Requires Vulkan SDK |
-| **Offline** (plugged in, Vulkan + 4 threads) | 4 | 66,049 | **TBD** | **TBD** | Async GPU + CPU pipeline |
+| **Offline** (CPU, 4 threads) | 4 | 66,049 | **15.1s** | **4363** | MinGW GCC 15.2.0, CPU mock mode |
+| **Offline** (CUDA, 4 threads) | 4 | 66,049 | **14.1s** | **4676** | nvcc + MSVC, persistent device buffer |
+| **Offline** (Pi 5, CPU, 4 threads) | 4 | 66,049 | **15.0s** | **4402** | 6.12.47 kernel, aarch64, g++ 14.2 |
 
-> Battery mode hits ~2585 CPS — the E-cores throttle and P-cores get voltage-limited. Plugged in should match or exceed the Pi 5's 4402 CPS. Vulkan will push past **15,000 CPS** by moving compute to the integrated Iris Xe GPU. (GPU specs: 4-Cores, 64 Execution Units (or EU's), 2.00GHz clock speed, 1,985 GFLOPS in single-precision FP32, Ray Tracing and up to 4 displays.)
+> The i7-13620H CPU keeps pace with the Pi 5 at ~4363 CPS. CUDA on the RTX 4050 (4676 CPS) is only a modest gain — the bottleneck is NBT serialization + file I/O, not noise compute. A batched kernel (multiple chunks per launch) would push past the CUDA launch overhead and approach ~15,000 CPS.
 
 ### How It Gets 88x
 
@@ -404,20 +402,20 @@ That said, biome diversity *is* on the roadmap. The fixed palette needs to becom
 
 The offline generator has neither problem: no JNI, no status advancement, no Minecraft server running at all. Just C++ writing bytes to disk.
 
-### Q: 3,001 CPS on a Pi 5 — what would this do on real hardware?
+### Q: 4,402 CPS on a Pi 5 — what would this do on real hardware?
 
-**A:** We don't have CUDA numbers yet (still in progress), but based on memory bandwidth scaling:
+We've got RTX 4050 numbers now. The bottleneck shifts from compute to I/O fast:
 
-| Hardware | Cores | Rel. BW | Est. CPS |
-|----------|-------|:-------:|:--------:|
-| Pi 5 (3.0GHz OC) | 4× A76 | 1× | 4,402 |
-| 8-core x86 (DDR4) | 8× Zen 3 | ~4× | ~17,600 |
-| **Vulkan: Intel Arc (Core Ultra)** | **~512 shaders** | **~5×** | **~15,000** |
-| **RTX 4050 Laptop (CUDA)** | **2560× CUDA** | **~5×** | **~15,000** |
-| 16-core x86 (DDR5) | 16× Zen 4 | ~8× | ~24,000 |
-| RTX 4090 (CUDA) | 16384× CUDA | ~100× | ~300,000+ |
+| Hardware | Cores/Shaders | Rel. BW | CPS |
+|----------|:-------------:|:-------:|:---:|
+| Pi 5 (3.0GHz OC) | 4× A76 | 1× | **4,402** |
+| i7-13620H (CPU) | 6P+4E | ~4× | **4,363** |
+| **RTX 4050 Laptop (CUDA)** | **2560× CUDA** | **~5×** | **4,676** |
+| 8-core x86 (DDR4) | 8× Zen 3 | ~4× | ~4,400 |
+| 16-core x86 (DDR5) | 16× Zen 4 | ~8× | ~7,500 |
+| RTX 4090 (CUDA) | 16384× CUDA | ~100× | ~15,000 |
 
-With Vulkan, the same chunk kernel runs on any GPU with Vulkan compute support — Intel Arc, AMD, or NVIDIA. The bottleneck shifts from compute to disk I/O just like CUDA. At ~300K CPS, you'd saturate a Gen4 NVMe in about 3 seconds. That's what we call a "nice problem to have." Also means you can stop asking "but what if I overclock to 3.4GHz" — the CPU is not the bottleneck anymore.
+The GPU barely helps because each chunk is a separate kernel launch + memcpy. The real fix is **batch launch**: fire one kernel that processes 32+ chunks at once, amortizing launch overhead to zero. That'd push RTX 4050 past **15,000 CPS** and RTX 4090 past **100,000 CPS**.
 
 ---
 
@@ -456,7 +454,7 @@ case 15: return "minecraft:ebony";
 - [ ] **2GB ring buffer** — async NVMe dump
 - [ ] **zstd compression** — background post-process
 - [ ] **Biome-aware palette** — forests get dirt, deserts get sand
-- [ ] **CUDA backend** — real NVIDIA GPU support
+- [x] **CUDA backend** — real NVIDIA GPU support (RTX 4050: 4676 CPS)
 - [ ] **Hilbert curve walk** — better locality than spiral
 
 ---

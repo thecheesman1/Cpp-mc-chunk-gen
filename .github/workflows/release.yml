@@ -3,62 +3,45 @@ name: Build & Release
 on:
   push:
     tags:
-      - 'v*'        # v0.1.0, v0.2.0, etc
-  workflow_dispatch: # manual trigger
-    inputs:
-      tag:
-        description: 'Release tag'
-        required: false
+      - 'v*'
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
   build-windows:
-    name: Windows (MSVC)
+    name: Windows (GUI Only)
     runs-on: windows-latest
-    defaults:
-      run:
-        shell: cmd
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build CLI (CPU)
-        run: |
-          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
-          cl /O2 /I. /Iguv /c chunkgen_offline.cpp /Fo chunkgen_offline.obj
-          cl /O2 /I. /c generator.cu /Fo generator.obj /D__CUDACC__ /D__CUDACC_VER_MAJOR__=0
-          link /OUT:chunkgen_offline.exe chunkgen_offline.obj generator.obj
-        continue-on-error: true
+      - name: Configure CMake
+        run: cmake -B build
 
       - name: Build GUI
-        run: |
-          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
-          cl /O2 /I. /Iguid /c gui/http_server.cpp /Fo http_server.obj
-          cl /O2 /I. /Iguid /c gui/api_handler.cpp /Fo api_handler.obj
-          cl /O2 /I. /Iguid /c gui/gui_main.cpp /Fo gui_main.obj
-          link /OUT:mcchunkgen-gui.exe http_server.obj api_handler.obj gui_main.obj ws2_32.lib shell32.lib
-        continue-on-error: true
+        run: cmake --build build --target mcchunkgen-gui --config Release
 
-      - name: Package (Windows)
+      - name: Package
+        shell: pwsh
         run: |
-          mkdir mcchunkgen-windows
-          if exist chunkgen_offline.exe copy chunkgen_offline.exe mcchunkgen-windows\
-          if exist mcchunkgen-gui.exe copy mcchunkgen-gui.exe mcchunkgen-windows\
-          xcopy /E /I gui\webui mcchunkgen-windows\gui\webui
-          copy README.md mcchunkgen-windows\
-          powershell Compress-Archive -Path mcchunkgen-windows -DestinationPath mcchunkgen-windows.zip
+          New-Item -ItemType Directory -Force -Path mcchunkgen-windows
+          Copy-Item "build/Release/mcchunkgen-gui.exe" -Destination "mcchunkgen-windows/" -ErrorAction SilentlyContinue
+          Copy-Item "build/mcchunkgen-gui.exe" -Destination "mcchunkgen-windows/" -ErrorAction SilentlyContinue
+          Copy-Item -Recurse "gui/webui" -Destination "mcchunkgen-windows/gui/" -ErrorAction SilentlyContinue
+          Copy-Item "README.md" -Destination "mcchunkgen-windows/" -ErrorAction SilentlyContinue
+          Compress-Archive -Path mcchunkgen-windows -DestinationPath mcchunkgen-windows.zip -Force
 
-      - name: Upload Windows artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: mcchunkgen-windows
           path: mcchunkgen-windows.zip
 
   build-linux:
-    name: Linux (GCC)
+    name: Linux (GUI Only)
     runs-on: ubuntu-latest
 
     steps:
@@ -68,31 +51,23 @@ jobs:
       - name: Install deps
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq g++ make
+          sudo apt-get install -y -qq g++ cmake
 
-      - name: Build CLI (CPU)
-        run: |
-          g++ -O2 -I. -c chunkgen_offline.cpp -o chunkgen_offline.o
-          g++ -O2 -I. -c generator.cu -o generator.o -D__CUDACC__ -D__CUDACC_VER_MAJOR__=0
-          g++ -O2 chunkgen_offline.o generator.o -o chunkgen_offline -lm -lpthread
+      - name: Configure CMake
+        run: cmake -B build
 
       - name: Build GUI
-        run: |
-          g++ -O2 -I. -Iguid -c gui/http_server.cpp -o http_server.o
-          g++ -O2 -I. -Iguid -c gui/api_handler.cpp -o api_handler.o
-          g++ -O2 -I. -Iguid -c gui/gui_main.cpp -o gui_main.o
-          g++ -O2 http_server.o api_handler.o gui_main.o -o mcchunkgen-gui -lm -lpthread
+        run: cmake --build build --target mcchunkgen-gui
 
-      - name: Package (Linux)
+      - name: Package
         run: |
           mkdir -p mcchunkgen-linux/gui/webui
-          cp chunkgen_offline mcchunkgen-linux/ 2>/dev/null || true
-          cp mcchunkgen-gui mcchunkgen-linux/ 2>/dev/null || true
+          cp build/mcchunkgen-gui mcchunkgen-linux/ 2>/dev/null || true
           cp -r gui/webui/* mcchunkgen-linux/gui/webui/
           cp README.md mcchunkgen-linux/
           tar czf mcchunkgen-linux.tar.gz mcchunkgen-linux
 
-      - name: Upload Linux artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: mcchunkgen-linux
@@ -115,17 +90,16 @@ jobs:
             ## McChunkGen ${{ github.ref_name }}
 
             ### Downloads
-            - **Windows**: `mcchunkgen-windows.zip` (CLI + GUI + web UI)
-            - **Linux**: `mcchunkgen-linux.tar.gz` (CLI + GUI + web UI)
+            - **Windows**: `mcchunkgen-windows.zip` (GUI + web UI)
+            - **Linux**: `mcchunkgen-linux.tar.gz` (GUI + web UI)
 
             ### Usage
             1. Extract the archive
-            2. Run `mcchunkgen-gui` to open the web UI
-            3. Or use `chunkgen_offline` directly from CLI
+            2. Run `mcchunkgen-gui` to open the web UI in your browser
+            3. The CLI `chunkgen_offline` needs CUDA toolkit to build from source
 
             ### What's included
-            - CLI chunk generator (CPU)
-            - GUI web interface (auto-opens browser)
+            - GUI server (auto-opens browser)
             - Full web UI with Generator, Inspector, Benchmark, Compress, Server tabs
           files: |
             mcchunkgen-windows/mcchunkgen-windows.zip

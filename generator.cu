@@ -166,7 +166,7 @@ __global__ void generate_chunk_kernel(ChunkBuffer buffer, int64_t chunk_x, int64
 //=============================================================================
 void launch_chunk_generator(ChunkBuffer d_buffer, int64_t chunk_x, int64_t chunk_z,
                              int64_t seed, void* device_buf,
-                             cudaStream_t stream) {
+                             void* stream) {
 #ifndef __CUDACC__
     // CPU mock mode: call the kernel directly as a simple double loop,
     // bypassing the expensive mock CUDA thread-launch machinery.
@@ -235,7 +235,7 @@ void launch_chunk_generator(ChunkBuffer d_buffer, int64_t chunk_x, int64_t chunk
         1
     );
 
-    LAUNCH_KERNEL(generate_chunk_kernel, grid_dim, block_dim, stream,
+    LAUNCH_KERNEL(generate_chunk_kernel, grid_dim, block_dim, (cudaStream_t)stream,
                   dev_buf, chunk_x, chunk_z, seed);
 
     cudaError_t err = cudaMemcpy(d_buffer.data, d_ptr, CHUNK_VOLUME * sizeof(block_t),
